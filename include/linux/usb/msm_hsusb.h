@@ -2,7 +2,7 @@
  *
  * Copyright (C) 2008 Google, Inc.
  * Author: Brian Swetland <swetland@google.com>
- * Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2009-2017, The Linux Foundation. All rights reserved.
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -446,6 +446,7 @@ struct msm_otg {
 	struct clk *phy_csr_clk;
 	struct clk *bus_clks[USB_NUM_BUS_CLOCKS];
 	long core_clk_rate;
+	long core_clk_svs_rate;
 	struct resource *io_res;
 	void __iomem *regs;
 	void __iomem *phy_csr_regs;
@@ -581,6 +582,10 @@ struct msm_otg {
 	char (buf[DEBUG_MAX_MSG])[DEBUG_MSG_LEN];   /* buffer */
 	enum usb_id_state id_state;
 	bool switch_vbus_w_id;
+	unsigned int usb_irq_count;
+	int pm_qos_latency;
+	struct pm_qos_request pm_qos_req_dma;
+	struct delayed_work perf_vote_work;
 };
 
 struct ci13xxx_platform_data {
