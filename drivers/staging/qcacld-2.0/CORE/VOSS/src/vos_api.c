@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1958,7 +1958,7 @@ VOS_STATUS vos_mq_post_message_by_priority(VOS_MQ_ID msgQueueId,
   else
       vos_mq_put(pTargetMq, pMsgWrapper);
 
-  set_bit(MC_POST_EVENT_MASK, &gpVosContext->vosSched.mcEventFlag);
+  set_bit(MC_POST_EVENT, &gpVosContext->vosSched.mcEventFlag);
   wake_up_interruptible(&gpVosContext->vosSched.mcWaitQueue);
 
   return VOS_STATUS_SUCCESS;
