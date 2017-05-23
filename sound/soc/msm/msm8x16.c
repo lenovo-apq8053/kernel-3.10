@@ -1,4 +1,4 @@
- /* Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
+ /* Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -405,7 +405,7 @@ static struct snd_soc_dapm_route wcd9335_audio_paths[] = {
 	{"MIC BIAS4", NULL, "MCLK"},
 };
 
-static char const *rx_bit_format_text[] = {"S16_LE", "S24_LE"};
+static char const *rx_bit_format_text[] = {"S16_LE", "S24_LE", "S24_3LE"};
 static const char *const mi2s_tx_ch_text[] = {"One", "Two", "Three", "Four"};
 static const char *const loopback_mclk_text[] = {"DISABLE", "ENABLE"};
 static char const *pri_rx_sample_rate_text[] = {"KHZ_48", "KHZ_96",
@@ -532,6 +532,10 @@ static int mi2s_rx_bit_format_get(struct snd_kcontrol *kcontrol,
 {
 
 	switch (mi2s_rx_bit_format) {
+	case SNDRV_PCM_FORMAT_S24_3LE:
+		ucontrol->value.integer.value[0] = 2;
+		break;
+
 	case SNDRV_PCM_FORMAT_S24_LE:
 		ucontrol->value.integer.value[0] = 1;
 		break;
@@ -553,6 +557,10 @@ static int mi2s_rx_bit_format_put(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
 	switch (ucontrol->value.integer.value[0]) {
+	case 2:
+		mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S24_3LE;
+		bits_per_sample = 32;
+		break;
 	case 1:
 		mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S24_LE;
 		bits_per_sample = 32;
@@ -1183,7 +1191,7 @@ static int msm_btsco_rate_put(struct snd_kcontrol *kcontrol,
 }
 
 static const struct soc_enum msm_snd_enum[] = {
-	SOC_ENUM_SINGLE_EXT(2, rx_bit_format_text),
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(rx_bit_format_text), rx_bit_format_text),
 	SOC_ENUM_SINGLE_EXT(4, mi2s_tx_ch_text),
 	SOC_ENUM_SINGLE_EXT(2, loopback_mclk_text),
 	SOC_ENUM_SINGLE_EXT(6, pri_rx_sample_rate_text),
@@ -1207,7 +1215,7 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			loopback_mclk_get, loopback_mclk_put),
 	SOC_ENUM_EXT("Internal BTSCO SampleRate", msm_btsco_enum[0],
 		     msm_btsco_rate_get, msm_btsco_rate_put),
-	SOC_ENUM_EXT("RX SampleRate", msm_snd_enum[3],
+	SOC_ENUM_EXT("MI2S_RX SampleRate", msm_snd_enum[3],
 			pri_rx_sample_rate_get, pri_rx_sample_rate_put),
 	SOC_ENUM_EXT("MI2S TX SampleRate", msm_snd_enum[4],
 			mi2s_tx_sample_rate_get, mi2s_tx_sample_rate_put),
