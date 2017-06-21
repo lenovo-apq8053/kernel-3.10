@@ -42,7 +42,7 @@
 
 #define BTSCO_RATE_8KHZ 8000
 #define BTSCO_RATE_16KHZ 16000
-#define MAX_SND_CARDS 2
+#define MAX_SND_CARDS 3
 
 #define SAMPLING_RATE_8KHZ      8000
 #define SAMPLING_RATE_16KHZ     16000
@@ -1937,6 +1937,63 @@ static struct snd_soc_dai_link msm8x16_9326_dai[] = {
 	},
 };
 
+static struct snd_soc_dai_link msm8x16_ext_codec_dai[] = {
+	/* Backend DAI Links */
+	{
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "msm-stub-codec.1",
+		.codec_dai_name	= "msm-stub-rx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm8x16_quat_mi2s_be_ops,
+		.ignore_pmdown_time = 1, /* dai link has playback support */
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_QUAT_MI2S_TX,
+		.stream_name = "Quaternary MI2S Capture",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "msm-stub-codec.1",
+		.codec_dai_name	= "msm-stub-tx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
+		.be_hw_params_fixup = msm_tx_be_hw_params_fixup,
+		.ops = &msm8x16_quat_mi2s_be_ops,
+		.ignore_suspend = 1,
+	},
+	{
+		.name = LPASS_BE_PRI_MI2S_RX,
+		.stream_name = "Primary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.0",
+		.platform_name = "msm-pcm-routing",
+		.codec_name     = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-rx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_PRI_MI2S_RX,
+		.be_hw_params_fixup = msm_pri_rx_be_hw_params_fixup,
+		.ops = &msm8x16_mi2s_be_ops,
+		.ignore_suspend = 1,
+	},
+	{ /* FrontEnd DAI Link, CPE Service */
+		.name = "CPE Listen service",
+		.stream_name = "CPE Listen Audio Service",
+		.cpu_dai_name = "CPE_LSM_NOHOST",
+		.platform_name = "msm-cpe-lsm",
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.codec_dai_name = "msm-stub-rx",
+		.codec_name = "msm-stub-codec.1",
+	},
+};
+
 static struct snd_soc_aux_dev msm8909_aux_dev[] = {
 	{
 		.name = "wsa881x.0",
@@ -2649,6 +2706,10 @@ static struct snd_soc_dai_link msm8x16_9326_dai_links[
 				ARRAY_SIZE(msm8x16_dai) +
 				ARRAY_SIZE(msm8x16_9326_dai)];
 
+static struct snd_soc_dai_link msm8x16_ext_codec_dai_links[
+				ARRAY_SIZE(msm8x16_dai) +
+				ARRAY_SIZE(msm8x16_ext_codec_dai)];
+
 struct snd_soc_card snd_soc_card_msm8916 = {
 	.name		= "msm8x16-snd-card",
 	.dai_link	= msm8x16_wcd_dai_links,
@@ -2672,6 +2733,11 @@ static struct snd_soc_card bear_cards[MAX_SND_CARDS] = {
 		.name		= "msm8x16-tapan-snd-card",
 		.dai_link	= msm8x16_9326_dai_links,
 		.num_links	= ARRAY_SIZE(msm8x16_9326_dai_links),
+	},
+	{
+		.name		= "msm8x16-ext-codec-snd-card",
+		.dai_link	= msm8x16_ext_codec_dai_links,
+		.num_links	= ARRAY_SIZE(msm8x16_ext_codec_dai_links),
 	},
 };
 
@@ -2899,7 +2965,19 @@ static struct snd_soc_card *populate_ext_snd_card_dailinks(
 	int found = 0;
 	int num_links, i, ret;
 
-	if (pdev->id == 1) {
+	if ((pdev->id == 2)) {
+		pr_debug("%s: card is ext codec\n", __func__);
+		card = &bear_cards[pdev->id];
+		num_links = ARRAY_SIZE(msm8x16_ext_codec_dai_links);
+
+		memcpy(msm8x16_ext_codec_dai_links, msm8x16_dai,
+				sizeof(msm8x16_dai));
+		memcpy(msm8x16_ext_codec_dai_links + ARRAY_SIZE(msm8x16_dai),
+			msm8x16_ext_codec_dai, sizeof(msm8x16_ext_codec_dai));
+
+		msm8909_dai_links = msm8x16_ext_codec_dai_links;
+
+	} else if ((pdev->id == 1)) {
 		pr_debug("%s: CARD is 9326\n", __func__);
 
 		card = &bear_cards[pdev->id];
@@ -3120,8 +3198,16 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 	const char *ptr = NULL;
 	const char *type = NULL;
 	const char *ext_pa_str = NULL;
-	int num_strings;
+	int num_strings, modem_state;
 	int ret, id, i;
+
+	modem_state = apr_get_modem_state();
+	if (modem_state == APR_SUBSYS_DOWN) {
+		dev_dbg(&pdev->dev, "defering %s, modem_state %d\n", __func__,
+			modem_state);
+		return -EPROBE_DEFER;
+	} else
+		dev_dbg(&pdev->dev, "modem is ready %d\n", modem_state);
 
 	pdata = devm_kzalloc(&pdev->dev,
 			sizeof(struct msm8916_asoc_mach_data), GFP_KERNEL);
