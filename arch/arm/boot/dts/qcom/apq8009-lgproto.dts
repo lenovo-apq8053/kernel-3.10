@@ -19,7 +19,7 @@
 #include "apq8009-audio-external_codec.dtsi"
 
 / {
-	model = "Qualcomm Technologies, Inc. APQ8009 WCD9326 Reference Board MTP";
+	model = "Qualcomm Technologies, Inc. APQ8009 LG Proto Board";
 	compatible = "qcom,apq8009-mtp", "qcom,apq8009", "qcom,mtp";
 	qcom,msm-id = <265 2>;
 	qcom,board-id= <8 0x8>;
@@ -38,7 +38,7 @@
 };
 
 &soc {
-	sound-9335 {
+	ext-codec {
 		qcom,msm-mbhc-hphl-swh = <0>;
 		qcom,audio-routing =
 			"AIF4 VI", "MCLK",
@@ -58,9 +58,13 @@
 			"SpkrRight IN", "SPK2 OUT";
 	};
 
+	sound-9335 {
+		status = "disabled";
+	};
+
 	i2c@78b8000 {
 		wcd9xxx_codec@d {
-			qcom,cdc-reset-gpio = <&msm_gpio 27 0>;
+		  status = "disabled";
 		};
 	};
 };
