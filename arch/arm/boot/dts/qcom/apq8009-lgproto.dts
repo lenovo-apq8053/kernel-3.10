@@ -29,6 +29,10 @@
 	status = "disabled";
 };
 
+&sdhc_2 {
+	status = "disabled";
+};
+
 &soc {
 	sound-9335 {
 		qcom,msm-mbhc-hphl-swh = <0>;
