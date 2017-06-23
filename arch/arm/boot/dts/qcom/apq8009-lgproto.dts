@@ -33,6 +33,10 @@
 	status = "disabled";
 };
 
+&synaptics_controller {
+	status = "disabled";
+};
+
 &soc {
 	sound-9335 {
 		qcom,msm-mbhc-hphl-swh = <0>;
