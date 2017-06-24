@@ -37,6 +37,10 @@
 	status = "disabled";
 };
 
+&usb_otg {
+	qcom,hsusb-otg-otg-control = <3>; /* USER */
+};
+
 &soc {
 	ext-codec {
 		qcom,msm-mbhc-hphl-swh = <0>;
