@@ -1,0 +1,5 @@
+config BT_USB
+    tristate "QCA9379 BT USB Driver"
+    default N
+    help
+      This is bt usb driver used by BT fluoride stack.
