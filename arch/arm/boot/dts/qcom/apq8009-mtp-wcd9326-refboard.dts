@@ -49,6 +49,10 @@
 			"SpkrLeft IN", "SPK1 OUT",
 			"SpkrRight IN", "SPK2 OUT";
 	};
+        ext-codec {
+                status = "disabled";
+        };
+
 
 	i2c@78b8000 {
 		wcd9xxx_codec@d {
