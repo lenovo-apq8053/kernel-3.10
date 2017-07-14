@@ -38,7 +38,9 @@
 };
 
 &usb_otg {
+	qcom,hsusb-otg-mode = <3>;
 	qcom,hsusb-otg-otg-control = <3>; /* USER */
+	vbus_otg-supply = <&vph_pwr_vreg>;
 };
 
 &soc {
@@ -71,6 +73,13 @@
 		  status = "disabled";
 		};
 	};
+
+  vph_pwr_vreg: vph_pwr_vreg {
+    compatible = "regulator-fixed";
+    status = "ok";
+    regulator-name = "vph_pwr";
+    regulator-always-on;
+  };
 };
 
 &external_image_mem {
