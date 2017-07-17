@@ -15,6 +15,9 @@
 #include "msm8909-camera-sensor-mtp.dtsi"
 
 &soc {
+  aliases {
+		synaptics1 = &synaptics_controller;
+	};
 	/*
 	 * DT node to add support for SMB135x charger and integrate
 	 * with VM-BMS.
@@ -63,7 +66,7 @@
 	};
 
 	i2c@78b9000 { /* BLSP1 QUP5 */
-		synaptics@20 {
+		synaptics_controller: synaptics@20 {
 			compatible = "synaptics,dsx";
 			reg = <0x20>;
 			interrupt-parent = <&msm_gpio>;

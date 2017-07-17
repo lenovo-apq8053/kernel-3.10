@@ -49,6 +49,10 @@
 			"SpkrLeft IN", "SPK1 OUT",
 			"SpkrRight IN", "SPK2 OUT";
 	};
+        ext-codec {
+                status = "disabled";
+        };
+
 
 	i2c@78b8000 {
 		wcd9xxx_codec@d {
@@ -57,12 +61,16 @@
 	};
 };
 
+&external_image_mem {
+	reg = <0x0 0x87a00000 0x0 0x0600000>;
+};
+
 &modem_adsp_mem {
-	reg = <0x0 0x88000000 0x0 0x02400000>;
+	reg = <0x0 0x88000000 0x0 0x01e00000>;
 };
 
 &peripheral_mem {
-	reg = <0x0 0x8a400000 0x0 0x0500000>;
+	reg = <0x0 0x89e00000 0x0 0x0700000>;
 };
 
 &i2c_4 {
@@ -93,3 +101,8 @@
 	status = "ok";
 	qcom,disable-bms;
 };
+
+&usb_otg { interrupts = <0 134 0>,<0 140 0>,<0 136 0>;
+                interrupt-names = "core_irq", "async_irq", "phy_irq";
+                qcom,hsusb-otg-mode = <3>;
+                vbus_otg-supply = <&smb1360_otg_supply>; };
