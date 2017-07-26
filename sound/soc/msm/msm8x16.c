@@ -1856,6 +1856,15 @@ static int msm_audrx_init_wcd(struct snd_soc_pcm_runtime *rtd)
 	return ret;
 }
 
+static int msm_audrx_ext_codec_init(struct snd_soc_pcm_runtime *rtd)
+{
+	struct snd_soc_codec *codec = rtd->codec;
+
+	snd_soc_add_codec_controls(codec, msm_snd_controls,
+				ARRAY_SIZE(msm_snd_controls));
+	return 0;
+}
+
 static struct snd_soc_ops msm8x16_quat_mi2s_be_ops = {
 	.startup = msm_quat_mi2s_snd_startup,
 	.hw_params = msm_mi2s_snd_hw_params,
@@ -1975,6 +1984,7 @@ static struct snd_soc_dai_link msm8x16_ext_codec_dai[] = {
 		.codec_dai_name = "msm-stub-rx",
 		.no_pcm = 1,
 		.be_id = MSM_BACKEND_DAI_PRI_MI2S_RX,
+		.init = &msm_audrx_ext_codec_init,
 		.be_hw_params_fixup = msm_pri_rx_be_hw_params_fixup,
 		.ops = &msm8x16_mi2s_be_ops,
 		.ignore_suspend = 1,
