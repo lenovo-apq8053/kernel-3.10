@@ -1464,7 +1464,10 @@
 			compatible = "qcom,msm-dai-q6-dev";
 			qcom,msm-dai-q6-dev-id = <12292>;
 		};
-
+		afe_loopback_tx: qcom,msm-dai-q6-afe-loopback-tx {
+			compatible = "qcom,msm-dai-q6-dev";
+			qcom,msm-dai-q6-dev-id = <24577>;
+		};
 		int_fm_tx: qcom,msm-dai-q6-int-fm-tx {
 			compatible = "qcom,msm-dai-q6-dev";
 			qcom,msm-dai-q6-dev-id = <12293>;
