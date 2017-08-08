@@ -2713,6 +2713,12 @@ static int mdp3_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	rc = mdp3_footswitch_ctrl(1);
+	if (rc) {
+		pr_err("unable to turn on FS\n");
+		goto probe_done;
+	}
+
 	rc = mdp3_check_version();
 	if (rc) {
 		pr_err("mdp3 check version failed\n");
@@ -2730,6 +2736,7 @@ static int mdp3_probe(struct platform_device *pdev)
 		pr_debug("%s: Enabling autosuspend\n", __func__);
 		pm_runtime_use_autosuspend(&pdev->dev);
 	}
+	rc = mdp3_footswitch_ctrl(0);
 	/* Enable PM runtime */
 	pm_runtime_set_suspended(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
