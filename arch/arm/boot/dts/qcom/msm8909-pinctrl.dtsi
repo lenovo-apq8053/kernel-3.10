@@ -30,6 +30,17 @@
 			};
 		};
 
+		client1_gpios {
+			qcom,pins = <&gp 22>, <&gp 66>, <&gp 67>;
+			qcom,num-grp-pins = <3>;
+                        qcom,pin-func = <0>;
+			label = "client1_default";
+                        client1_default_configuration: client1_default {
+				drive-strength = <8>; /* 8 MA */
+				bias-disable; /* No PULL since we need the SW to drive these after boot-up */
+			};
+		};
+
 		cam_sensor_mclk0 {
 			/* MCLK */
 			qcom,pins = <&gp 26>;
