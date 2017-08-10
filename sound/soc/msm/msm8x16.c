@@ -2002,6 +2002,18 @@ static struct snd_soc_dai_link msm8x16_ext_codec_dai[] = {
 		.codec_dai_name = "msm-stub-rx",
 		.codec_name = "msm-stub-codec.1",
 	},
+	{
+		.name = LPASS_BE_AFE_LOOPBACK_TX,
+		.stream_name = "AFE Loopback Capture",
+		.cpu_dai_name = "msm-dai-q6-dev.24577",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "msm-stub-codec.1",
+		.codec_dai_name = "msm-stub-tx",
+		.no_pcm = 1,
+		.be_id = MSM_BACKEND_DAI_AFE_LOOPBACK_TX,
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+	},
 };
 
 static struct snd_soc_aux_dev msm8909_aux_dev[] = {
