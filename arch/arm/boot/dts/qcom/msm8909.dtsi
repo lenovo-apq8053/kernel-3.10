@@ -157,6 +157,12 @@
 		<0x0b002000 0x1000>;
 	};
 
+	client1 {
+		pinctrl-states = "default";
+		/* Use phandle referrence to default configuration node */
+		pinctrl-0 = <&client1_default_configuration>;
+	};
+
 	restart@4ab000 {
 		compatible = "qcom,pshold";
 		reg =	<0x4ab000 0x4>,
@@ -357,7 +363,7 @@
 		compatible = "qcom,msm-lsuart-v14";
 		reg = <0x78b0000 0x200>;
 		interrupts = <0 108 0>;
-		status = "disabled";
+		status = "ok";
 		clocks = <&clock_gcc clk_gcc_blsp1_uart2_apps_clk>,
 			 <&clock_gcc clk_gcc_blsp1_ahb_clk>;
 		clock-names = "core_clk", "iface_clk";
