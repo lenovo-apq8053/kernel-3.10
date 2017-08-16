@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014,2016-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2014,2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -49,10 +49,10 @@
 #define AR6320_REV4_VERSION          AR6320_REV2_1_VERSION
 #define QCA9379_REV1_VERSION         0x5040000
 #define AR6320_DEV_VERSION           0x1000000
-#define QCA_FIRMWARE_FILE            "athwlan.bin"
-#define QCA_UTF_FIRMWARE_FILE        "utf.bin"
-#define QCA_BOARD_DATA_FILE          "fakeboar.bin"
-#define QCA_OTP_FILE                 "otp.bin"
+#define QCA_FIRMWARE_FILE            "wlan/athwlan.bin"
+#define QCA_UTF_FIRMWARE_FILE        "wlan/utf.bin"
+#define QCA_BOARD_DATA_FILE          "wlan/fakeboar.bin"
+#define QCA_OTP_FILE                 "wlan/otp.bin"
 #define QCA_SETUP_FILE               "athsetup.bin"
 #define AR61X4_SINGLE_FILE           "qca61x4.bin"
 #define QCA_FIRMWARE_EPPING_FILE     "epping.bin"
