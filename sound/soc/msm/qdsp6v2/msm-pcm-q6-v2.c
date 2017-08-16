@@ -58,7 +58,7 @@ struct snd_msm {
 
 #define PLAYBACK_MIN_NUM_PERIODS    2
 #define PLAYBACK_MAX_NUM_PERIODS    8
-#define PLAYBACK_MAX_PERIOD_SIZE    12288
+#define PLAYBACK_MAX_PERIOD_SIZE    61440
 #define PLAYBACK_MIN_PERIOD_SIZE    128
 #define CAPTURE_MIN_NUM_PERIODS     2
 #define CAPTURE_MAX_NUM_PERIODS     8
@@ -96,7 +96,8 @@ static struct snd_pcm_hardware msm_pcm_hardware_playback = {
 				SNDRV_PCM_INFO_INTERLEAVED |
 				SNDRV_PCM_INFO_PAUSE | SNDRV_PCM_INFO_RESUME),
 	.formats =              (SNDRV_PCM_FMTBIT_S16_LE |
-				SNDRV_PCM_FMTBIT_S24_LE),
+				SNDRV_PCM_FMTBIT_S24_LE |
+				SNDRV_PCM_FMTBIT_S24_3LE),
 	.rates =                SNDRV_PCM_RATE_8000_192000,
 	.rate_min =             8000,
 	.rate_max =             192000,
@@ -287,7 +288,8 @@ static int msm_pcm_playback_prepare(struct snd_pcm_substream *substream)
 	struct msm_plat_data *pdata;
 	struct snd_pcm_hw_params *params;
 	int ret;
-	uint16_t bits_per_sample = 16;
+	uint16_t bits_per_sample;
+	uint16_t sample_word_size;
 
 	pdata = (struct msm_plat_data *)
 		dev_get_drvdata(soc_prtd->platform->dev);
@@ -310,10 +312,23 @@ static int msm_pcm_playback_prepare(struct snd_pcm_substream *substream)
 	prtd->audio_client->perf_mode = pdata->perf_mode;
 	pr_debug("%s: perf: %x\n", __func__, pdata->perf_mode);
 
-	if (params_format(params) == SNDRV_PCM_FORMAT_S24_LE)
+	switch (params_format(params)) {
+	case SNDRV_PCM_FORMAT_S24_LE:
 		bits_per_sample = 24;
+		sample_word_size = 32;
+		break;
+	case SNDRV_PCM_FORMAT_S24_3LE:
+		bits_per_sample = 24;
+		sample_word_size = 24;
+		break;
+	case SNDRV_PCM_FORMAT_S16_LE:
+	default:
+		bits_per_sample = 16;
+		sample_word_size = 16;
+		break;
+	}
 
-	ret = q6asm_open_write_v2(prtd->audio_client,
+	ret = q6asm_open_write_v3(prtd->audio_client,
 			FORMAT_LINEAR_PCM, bits_per_sample);
 	if (ret < 0) {
 		pr_err("%s: q6asm_open_write_v2 failed\n", __func__);
@@ -333,19 +348,11 @@ static int msm_pcm_playback_prepare(struct snd_pcm_substream *substream)
 		return ret;
 	}
 
-	switch (runtime->format) {
-	case SNDRV_PCM_FORMAT_S16_LE:
-		bits_per_sample = 16;
-		break;
-	case SNDRV_PCM_FORMAT_S24_LE:
-		bits_per_sample = 24;
-		break;
-	}
-
-	ret = q6asm_media_format_block_multi_ch_pcm_v2(
+	ret = q6asm_media_format_block_multi_ch_pcm_v3(
 			prtd->audio_client, runtime->rate,
 			runtime->channels, !prtd->set_channel_map,
-			prtd->channel_map, bits_per_sample);
+			prtd->channel_map, bits_per_sample,
+			sample_word_size);
 	if (ret < 0)
 		pr_info("%s: CMD Format block failed\n", __func__);
 

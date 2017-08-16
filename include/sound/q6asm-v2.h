@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2014, 2016 The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014,2016-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -227,6 +227,8 @@ int q6asm_open_write(struct audio_client *ac, uint32_t format
 int q6asm_open_write_v2(struct audio_client *ac, uint32_t format,
 			uint16_t bits_per_sample);
 
+int q6asm_open_write_v3(struct audio_client *ac, uint32_t format,
+			uint16_t bits_per_sample);
 int q6asm_stream_open_write_v2(struct audio_client *ac, uint32_t format,
 				uint16_t bits_per_sample, int32_t stream_id,
 				bool is_gapless_mode);
@@ -365,6 +367,13 @@ int q6asm_media_format_block_multi_ch_pcm_v2(
 			uint32_t rate, uint32_t channels,
 			bool use_default_chmap, char *channel_map,
 			uint16_t bits_per_sample);
+
+int q6asm_media_format_block_multi_ch_pcm_v3(struct audio_client *ac,
+					     uint32_t rate, uint32_t channels,
+					     bool use_default_chmap,
+					     char *channel_map,
+					     uint16_t bits_per_sample,
+					     uint16_t sample_word_size);
 
 int q6asm_media_format_block_aac(struct audio_client *ac,
 			struct asm_aac_cfg *cfg);
