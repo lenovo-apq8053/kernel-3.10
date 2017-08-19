@@ -17,6 +17,7 @@
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/mfd/pm8xxx/pm8921.h>
+#include <linux/regulator/consumer.h>
 #include <linux/qpnp/clkdiv.h>
 #include <linux/io.h>
 #include <linux/module.h>
@@ -39,6 +40,8 @@
 #include "../codecs/wsa881x.h"
 
 #define DRV_NAME "msm8x16-asoc-wcd"
+
+#define MICB_VREG_NAME "vdd-micb"
 
 #define BTSCO_RATE_8KHZ 8000
 #define BTSCO_RATE_16KHZ 16000
@@ -3468,7 +3471,35 @@ static int msm8x16_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
+	if (of_get_property(
+		pdev->dev.of_node,
+		MICB_VREG_NAME "-supply", NULL)) {
+		pdata->micb_vreg = regulator_get(&pdev->dev, MICB_VREG_NAME);
+		if (IS_ERR(pdata->micb_vreg)) {
+			ret = PTR_ERR(pdata->micb_vreg);
+			pr_err("VDD-micbias get failed error=%d\n", ret);
+			goto err;
+		}
+
+		ret = regulator_set_voltage(
+			pdata->micb_vreg, 1800000, 1800000);
+		if (ret) {
+			pr_err("VDD-micbias set voltage failed error=%d\n", ret);
+			goto err_vreg_regulator;
+		} else {
+			ret = regulator_enable(pdata->micb_vreg);
+			if (ret) {
+				pr_err("VDD-MICBIAS enable failed error=%d\n",
+					ret);
+				goto err_vreg_regulator;
+			}
+		}
+	}
+
 	return 0;
+
+err_vreg_regulator:
+	regulator_put(pdata->micb_vreg);
 err:
 	if (pdata->vaddr_gpio_mux_spkr_ctl)
 		iounmap(pdata->vaddr_gpio_mux_spkr_ctl);
