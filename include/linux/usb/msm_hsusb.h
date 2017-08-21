@@ -310,6 +310,7 @@ struct msm_otg_platform_data {
 	bool rw_during_lpm_workaround;
 	bool enable_ahb2ahb_bypass;
 	bool disable_retention_with_vdd_min;
+        bool switch_vbus_w_id;
 	int usb_id_gpio;
 	int hub_reset_gpio;
 	int switch_sel_gpio;
@@ -579,6 +580,7 @@ struct msm_otg {
 	rwlock_t dbg_lock;
 	char (buf[DEBUG_MAX_MSG])[DEBUG_MSG_LEN];   /* buffer */
 	enum usb_id_state id_state;
+	bool switch_vbus_w_id;
 };
 
 struct ci13xxx_platform_data {

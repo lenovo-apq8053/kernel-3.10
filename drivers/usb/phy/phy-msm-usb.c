@@ -139,6 +139,7 @@ static u32 bus_freqs[USB_NUM_BUS_CLOCKS];	/* bimc, snoc, pcnoc clk */;
 static char bus_clkname[USB_NUM_BUS_CLOCKS][20] = {"bimc_clk", "snoc_clk",
 						"pcnoc_clk"};
 static bool bus_clk_rate_set;
+static void msm_otg_set_vbus_state(int online);
 
 static void
 msm_otg_dbg_log_event(struct usb_phy *phy, char *event, int d1, int d2)
@@ -3116,10 +3117,15 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 				else
 					clear_bit(ID, &motg->inputs);
 			} else if (motg->phy_irq) {
-				if (msm_otg_read_phy_id_state(motg))
+				if (msm_otg_read_phy_id_state(motg)){
 					set_bit(ID, &motg->inputs);
-				else
+					if(motg->switch_vbus_w_id)
+						msm_otg_set_vbus_state(1);
+				} else {
 					clear_bit(ID, &motg->inputs);
+					if(motg->switch_vbus_w_id)
+						msm_otg_set_vbus_state(0);
+				}
 			}
 			/*
 			 * VBUS initial state is reported after PMIC
@@ -4244,6 +4250,8 @@ static void msm_id_status_w(struct work_struct *w)
 			gpio_direction_input(motg->pdata->switch_sel_gpio);
 		if (!test_and_set_bit(ID, &motg->inputs)) {
 			pr_debug("ID set\n");
+                        if(motg->switch_vbus_w_id)
+				msm_otg_set_vbus_state(1);
 			msm_otg_dbg_log_event(&motg->phy, "ID SET",
 					motg->inputs, motg->phy.state);
 			work = 1;
@@ -4253,6 +4261,8 @@ static void msm_id_status_w(struct work_struct *w)
 			gpio_direction_output(motg->pdata->switch_sel_gpio, 1);
 		if (test_and_clear_bit(ID, &motg->inputs)) {
 			pr_debug("ID clear\n");
+                        if(motg->switch_vbus_w_id)
+				msm_otg_set_vbus_state(0);
 			msm_otg_dbg_log_event(&motg->phy, "ID CLEAR",
 					motg->inputs, motg->phy.state);
 			set_bit(A_BUS_REQ, &motg->inputs);
@@ -5348,7 +5358,8 @@ struct msm_otg_platform_data *msm_otg_dt_to_pdata(struct platform_device *pdev)
 
 	pdata->rw_during_lpm_workaround = of_property_read_bool(node,
 				"qcom,hsusb-otg-rw-during-lpm-workaround");
-
+	pdata->switch_vbus_w_id = of_property_read_bool(node,
+				"qcom,switch-vbus-w-id");
 	return pdata;
 }
 
@@ -5994,6 +6005,8 @@ static int msm_otg_probe(struct platform_device *pdev)
 			goto remove_cdev;
 		}
 	}
+        if(pdata->switch_vbus_w_id)
+		motg->switch_vbus_w_id = pdata->switch_vbus_w_id;
 
 	init_waitqueue_head(&motg->host_suspend_wait);
 	motg->pm_notify.notifier_call = msm_otg_pm_notify;
