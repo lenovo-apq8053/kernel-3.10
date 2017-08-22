@@ -177,6 +177,7 @@
 		pinctrl-6 = <&pri_mi2s_sleep &quat_mi2s_active &quat_mi2s_din_active &cross_conn_det_act>;
 		pinctrl-7 = <&pri_mi2s_active &quat_mi2s_active &quat_mi2s_din_active &cross_conn_det_act>;
 
+		vdd-micb-supply = <&pm8916_l6>;
 		asoc-platform = <&pcm0>, <&pcm1>, <&voip>, <&voice>,
 				<&loopback>, <&compress>, <&hostless>,
 				<&afe>, <&lsm>, <&routing>, <&cpe>, <&lpa>;
