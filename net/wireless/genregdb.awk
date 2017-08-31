@@ -57,31 +57,24 @@ active && /^[ \t]*\(/ {
 	end = $3
 	bw = $5
 	sub(/\),/, "", bw)
-	gain = $6
-	sub(/\(/, "", gain)
-	sub(/,/, "", gain)
-	power = $7
-	sub(/\)/, "", power)
-	sub(/,/, "", power)
+	gain = 0
+	power = $6
+	sub(/\(/, "", power)
+	sub(/\),/, "", power)
 	# power might be in mW...
-	units = $8
+	units = $7
+	sub(/\),/, "", units)
 	sub(/\)/, "", units)
-	sub(/,/, "", units)
 	if (units == "mW") {
-		if (power == 100) {
-			power = 20
-		} else if (power == 200) {
-			power = 23
-		} else if (power == 500) {
-			power = 27
-		} else if (power == 1000) {
-			power = 30
-		} else {
-			print "Unknown power value in database!"
-		}
+		power = 10 * log(power)/log(10)
+		flag_starts_at=8
 	}
+	else {
+		flag_starts_at=7
+	}
+
 	flagstr = ""
-	for (i=8; i<=NF; i++)
+	for (i=flag_starts_at; i<=NF; i++)
 		flagstr = flagstr $i
 	split(flagstr, flagarray, ",")
 	flags = ""
