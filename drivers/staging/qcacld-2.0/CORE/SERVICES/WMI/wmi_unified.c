@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2017 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -848,7 +848,7 @@ int wmi_unified_cmd_send(wmi_unified_t wmi_handle, wmi_buf_t buf, int len,
 	A_UINT16 htc_tag = 0;
 
 	if (vos_is_shutdown_in_progress(VOS_MODULE_ID_WDA, NULL)) {
-		adf_os_print("\nERROR: %s: shutdown is in progress so could not send WMI command: %d\n",
+		WMA_LOGD("\nERROR: %s: shutdown is in progress so could not send WMI command: %d\n",
 			__func__, cmd_id);
 		return -EBUSY;
 	}
