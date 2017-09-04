@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2017, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted (subject to the limitations in the
@@ -92,8 +92,8 @@ struct __packed rome2_1_version {
 #define TF1_1_USB_RAMPATCH_FILE     "ar3k/rampatch_tlv_usb_tf_1.1.tlv"
 #define TF1_1_USB_NVM_FILE          "ar3k/nvm_tlv_usb_tf_1.1.bin"
 
-#define NPL1_0_USB_RAMPATCH_FILE    "ar3k/rampatch_tlv_usb_npl_1.0.tlv"
-#define NPL1_0_USB_NVM_FILE         "ar3k/nvm_tlv_usb_npl_1.0.bin"
+#define NPL1_0_USB_RAMPATCH_FILE    "btfwnpls.tlv"
+#define NPL1_0_USB_NVM_FILE         "btnvnpls.bin"
 
 #define ROME2_1_USB_RAMPATCH_HEADER sizeof(struct rome2_1_version)
 #define ROME1_1_USB_RAMPATCH_HEADER sizeof(struct rome1_1_version)
@@ -256,7 +256,6 @@ static int ath3k_load_patch(struct usb_device *udev,
     struct rome2_1_version *rome2_1_version;
     struct rome1_1_version *rome1_1_version;
     int ret;
-    char file_path[ATH3K_PATH_LEN] = {0};
 
     BT_INFO("%s: Get FW STATE prior to downloading the RAMAPCTH\n", __func__);
     printk(KERN_ERR "%s: Get FW STATE prior to downloading the RAMAPCTH\n", __func__);
@@ -323,7 +322,6 @@ static int ath3k_load_patch(struct usb_device *udev,
         break;
     }
 
-    snprintf(file_path,ATH3K_PATH_LEN,"/system/etc/firmware/%s", filename);
 
     ret = request_firmware(&firmware, filename, &udev->dev);
 
@@ -395,7 +393,6 @@ static int ath3k_load_syscfg(struct usb_device *udev,
     char filename[ATH3K_NAME_LEN] = {0};
     const struct firmware *firmware;
     int clk_value, ret;
-    char file_path[ATH3K_PATH_LEN] = {0};
 
     BT_INFO("%s: Get FW STATE prior to downloading the NVM\n", __func__);
     ret = ath3k_get_state(udev, &fw_state);
@@ -448,7 +445,6 @@ static int ath3k_load_syscfg(struct usb_device *udev,
         snprintf(filename, ATH3K_NAME_LEN, "ar3k/ramps_0x%08x_%d%s",
             version->rom_version, clk_value, ".dfu");
 
-    snprintf(file_path,ATH3K_PATH_LEN,"/system/etc/firmware/%s", filename);
 
     ret = request_firmware(&firmware, filename, &udev->dev);
     if (ret < 0) {
