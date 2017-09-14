@@ -3123,8 +3123,6 @@ static void msm_otg_init_sm(struct msm_otg *motg)
 						msm_otg_set_vbus_state(1);
 				} else {
 					clear_bit(ID, &motg->inputs);
-					if(motg->switch_vbus_w_id)
-						msm_otg_set_vbus_state(0);
 				}
 			}
 			/*
@@ -4261,8 +4259,6 @@ static void msm_id_status_w(struct work_struct *w)
 			gpio_direction_output(motg->pdata->switch_sel_gpio, 1);
 		if (test_and_clear_bit(ID, &motg->inputs)) {
 			pr_debug("ID clear\n");
-                        if(motg->switch_vbus_w_id)
-				msm_otg_set_vbus_state(0);
 			msm_otg_dbg_log_event(&motg->phy, "ID CLEAR",
 					motg->inputs, motg->phy.state);
 			set_bit(A_BUS_REQ, &motg->inputs);
