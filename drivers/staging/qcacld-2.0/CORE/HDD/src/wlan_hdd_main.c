@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1151,9 +1151,6 @@ int wlan_hdd_validate_context(hdd_context_t *pHddCtx)
 
     if ((pHddCtx->isLoadInProgress) ||
         (pHddCtx->isUnloadInProgress)) {
-        hddLog(LOGE,
-             FL("%pS Unloading/Loading in Progress. Ignore!!!"),
-             (void *)_RET_IP_);
         return -EAGAIN;
     }
     return 0;

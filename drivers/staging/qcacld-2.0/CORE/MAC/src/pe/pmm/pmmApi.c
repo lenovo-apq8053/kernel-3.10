@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2014 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, 2017 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -3197,7 +3197,7 @@ tSirRetStatus pmmOffloadExitBmpsRespHandler(tpAniSirGlobal pMac,
     }
     else
     {
-        pmmLog(pMac, LOGE,
+        pmmLog(pMac, LOG1,
                "ExitBmpsResp Failed PeSessionId %x SmeSessionId %x",
                psessionEntry->peSessionId, psessionEntry->smeSessionId);
 

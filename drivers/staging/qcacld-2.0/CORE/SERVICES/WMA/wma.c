@@ -19152,7 +19152,7 @@ static int32_t wmi_unified_set_sta_ps(wmi_unified_t wmi_handle,
         if(wmi_unified_cmd_send(wmi_handle, buf, len,
                        WMI_STA_POWERSAVE_MODE_CMDID))
         {
-                WMA_LOGE("Set Sta Mode Ps Failed vdevId %d val %d",
+                WMA_LOGD("Set Sta Mode Ps Failed vdevId %d val %d",
                          vdev_id, val);
                 wmi_buf_free(buf);
                 return -EIO;
@@ -19572,7 +19572,7 @@ static void wma_disable_sta_ps_mode(tp_wma_handle wma, tpDisablePsParams ps_req)
         /* Disable Sta Mode Power save */
         ret = wmi_unified_set_sta_ps(wma->wmi_handle, vdev_id, false);
         if(ret) {
-                WMA_LOGE("Disable Sta Mode Ps Failed vdevId %d", vdev_id);
+                WMA_LOGD("Disable Sta Mode Ps Failed vdevId %d", vdev_id);
                 ps_req->status = VOS_STATUS_E_FAILURE;
                 goto resp;
         }
