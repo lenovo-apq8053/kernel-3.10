@@ -88,6 +88,7 @@ struct usb_device_id csr_device_table[] =
     { USB_DEVICE(0x0cf3, 0xe500) },
     { USB_DEVICE(0x04b3, 0x3107) }, //Broadcom dongle
     { USB_DEVICE(0x0a5c, 0x21ec) }, //Broadcom dongle
+    { USB_DEVICE(0x043e, 0x7a86) }, //LGE dongle
     {  }, /* END */
 };
 MODULE_DEVICE_TABLE(usb, csr_device_table);
@@ -98,6 +99,7 @@ struct usb_device_id fw_update_device_table[] =
     { USB_DEVICE(QCOM_VENDOR_ID, QCOM_PRODUCT_ID),.driver_info = BTUSB_ATH3012 },      //QCOM ROME
     { USB_DEVICE(0x0cf3, 0xe300),.driver_info = BTUSB_ATH3012 },
     { USB_DEVICE(0x0cf3, 0xe500),.driver_info = BTUSB_ATH3012 },
+    { USB_DEVICE(0x043e, 0x7a86),.driver_info = BTUSB_ATH3012 }, //LGE device
     {  }, /* END */
 };
 
