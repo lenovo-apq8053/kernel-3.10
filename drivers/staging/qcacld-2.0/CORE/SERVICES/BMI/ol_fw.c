@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2017 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -1286,8 +1286,12 @@ void ol_ramdump_handler(struct ol_softc *scn)
 							fw_ram_seg_size[i],
 							GFP_KERNEL);
 			if (!scn->ramdump[i]) {
-				pr_err("Fail to allocate memory for ram dump");
-				VOS_BUG(0);
+				scn->ramdump[i] = vmalloc(sizeof(struct fw_ramdump) +
+								fw_ram_seg_size[i]);
+				if (!scn->ramdump[i]) {
+					pr_err("Fail to allocate memory for ram dump");
+					VOS_BUG(0);
+				}
 			}
 			(scn->ramdump[i])->mem =
 				(A_UINT8 *) (scn->ramdump[i] + 1);
