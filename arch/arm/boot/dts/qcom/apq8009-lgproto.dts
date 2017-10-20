@@ -22,7 +22,7 @@
 	model = "Qualcomm Technologies, Inc. APQ8009 LG Proto Board";
 	compatible = "qcom,apq8009-mtp", "qcom,apq8009", "qcom,mtp";
 	qcom,msm-id = <265 2>;
-	qcom,board-id= <8 0x8>;
+	qcom,board-id= <10 0x1>;
 };
 
 &qcom_camera1 {
