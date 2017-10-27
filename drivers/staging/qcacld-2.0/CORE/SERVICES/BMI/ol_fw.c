@@ -1268,7 +1268,8 @@ void ol_ramdump_handler(struct ol_softc *scn)
 			}
 			hex_dump_to_buffer(reg, remaining, 16, 4, str_buf,
 						sizeof(str_buf), false);
-			pr_err("%#08x: %s\n", start_addr + i, str_buf);
+			if (printk_ratelimit())
+			    pr_err("%#08x: %s\n", start_addr + i, str_buf);
 			remaining -= 16;
 			reg += 4;
 		}
