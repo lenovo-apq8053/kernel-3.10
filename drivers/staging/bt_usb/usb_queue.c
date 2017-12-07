@@ -111,7 +111,7 @@ void QueueFree(csr_dev_t *dv)
     {
         printk(PRNPREFIX "Queue elements freed does not match queue count\n");
     }
-    DBG_VERBOSE("Free queue: Contained %i, freed %i\n", j, i);
+	printk("Free queue: Contained %i, freed %i\n", j, i);
 
     atomic_set(&(q->count), 0);
 }

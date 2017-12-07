@@ -161,6 +161,7 @@ void SetUsbIsocAltSetting(int alt);
 void SetUsbMaxIsocInFrames(int in);
 void SetUsbMaxIsocOutFrames(int out);
 bool devExist(uint8_t devno);
+csr_dev_t *devLookup(uint8_t devno);
 /* Structure to hold the static settings (before the driver is initialized) */
 typedef struct
 {

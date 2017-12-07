@@ -213,6 +213,7 @@ typedef struct
 int readerThread(void *parm);
 int16_t usbTxCtrl(csr_dev_t *dv, void *data, uint16_t length);
 int16_t usbTxBulk(csr_dev_t *dv, void *data, uint16_t length);
+void startListen(csr_dev_t *dv);
 #ifdef CSR_BR_USB_USE_SCO_INTF
 int16_t usbTxIsoc(csr_dev_t *dv, void *data, uint16_t length);
 #endif
