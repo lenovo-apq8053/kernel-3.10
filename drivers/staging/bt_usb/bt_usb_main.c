@@ -310,6 +310,7 @@ static ssize_t bt_usb_read(struct file *file, char __user *buf, size_t size, lof
     /* Grab lock and wait for data in queue */
     if (down_interruptible(&inst->access_sem))
     {
+		printk("%s : error, can not down_interruptible access_sem\n",__func__);
         return(-ERESTARTSYS);
     }
 
@@ -323,11 +324,13 @@ static ssize_t bt_usb_read(struct file *file, char __user *buf, size_t size, lof
         if (wait_event_interruptible(inst->read_q,
                                      (inst->first != NULL)))
         {
+			printk("%s : error, wait_event_interruptible read_q\n",__func__);
             return(-ERESTARTSYS);
         }
 
         if (down_interruptible(&inst->access_sem))
         {
+			printk("%s : error, down_interruptible access_sem\n",__func__);
             return(-ERESTARTSYS);
         }
     }
@@ -552,6 +555,7 @@ static ssize_t bt_usb_write(struct file *file, const char __user *buf, size_t co
 static int bt_usb_open(struct inode *inode, struct file *filp)
 {
     bt_usb_instance_t *inst;
+    csr_dev_t *dv;
     int minor;    
     minor = MINOR(inode->i_rdev);
 
@@ -571,7 +575,18 @@ static int bt_usb_open(struct inode *inode, struct file *filp)
         printk("bt_usb: no device probed yet");
         return -ENXIO;
     }
+    dv = devLookup(minor);
+    if(dv == NULL)
+	{
+		printk("%s: Device not initialized\n",__func__);
+		return false;
+	}
+	if(!test_bit(LISTEN_STARTED, &dv->flags))
+	{
+		startListen(dv);
+	}
     
+	up(&dv->devlock);
     down(&inst_sem);
  #if 0   
     if (&instances[minor] != NULL)
@@ -616,6 +631,7 @@ static int bt_usb_release(struct inode *inode, struct file *filp)
     bt_usb_instance_t *inst;
     read_q_elm_t *ptr;
     read_q_elm_t *next;
+    csr_dev_t *dv;
 
     inst = (bt_usb_instance_t *)filp->private_data;
 
@@ -644,43 +660,27 @@ static int bt_usb_release(struct inode *inode, struct file *filp)
 
         ptr = next;
     }
-    printk("wake up interrupt on release %p %p\n",&inst, &(inst->read_q));
+    printk("%s:wake up interrupt on release %p %p\n",__func__,&inst, &(inst->read_q));
     inst->first = NULL;
     inst->last = NULL;
     inst->count = 0;   
     inst->in_use = false;
-    wake_up(&inst->read_q);
+    wake_up_interruptible_all(&inst->read_q);
 #ifdef CONFIG_USB_SUSPEND
 /*	UsbDev_PmEnable(inst->minor); */
 #endif
 
     up(&inst->access_sem);
-    //pfree(inst); //do not free it 
-//note - change the design to create the devices when needed
+    dv = devLookup(inst->minor);
+    if(dv == NULL)
+	{
+		printk("%s: Device not initialized\n",__func__);
+		return false;
+	}
 
-//create another instance for usb0
-#if 0
-    /* Allocate the array of devices */
-   instances = (struct bt_usb_instance_t *)kzalloc(
-    		                BT_USB_COUNT * sizeof(bt_usb_instance_t), 
-    		                GFP_KERNEL);
-   if (instances == NULL) {
-    		err = -ENOMEM;
-    		return err;
-   }
-
-   /* Construct devices */
-   for (i = 0; i < BT_USB_COUNT; ++i) {
-	err = bt_usb_construct_device(&instances[i], i, bt_usb_class);
-       if (err) {
-            unregister_chrdev_region(MKDEV(bt_usb_major, 0), BT_USB_COUNT);            
-            class_destroy(bt_usb_class);
-            UsbDrv_Stop();
-            bt_usb_major = 0;
-            return -EINVAL;
-       }
-   }
-#endif
+    usbCleanUrbs(dv);
+    QueueFree(dv);
+	up(&dv->devlock);
 
     return 0;
 }

@@ -285,7 +285,7 @@ void csrUsbDisconnect(struct usb_interface *intf)
 
     if (test_bit(R_THREAD_RUNNING, &(dv->flags)))
     {
-        DBG_PRINT("Stopping the reader thread\n");
+        printk("Stopping the reader thread\n");
 
         clear_bit(R_THREAD_RUNNING, &(dv->flags));
         wake_up_interruptible(&(dv->queue.wait));
@@ -298,11 +298,11 @@ void csrUsbDisconnect(struct usb_interface *intf)
 
         /* XXX: Is this whole dance correct? */
 
-        DBG_PRINT("The reader thread has been stopped\n");
+        printk("The reader thread has been stopped\n");
     }
     else
     {
-        DBG_PRINT("Reader thread was not running\n");
+        printk("Reader thread was not running\n");
     }
 
     /* Set the flags indicating that the module must be stopped */
@@ -346,7 +346,7 @@ void csrUsbDisconnect(struct usb_interface *intf)
      */
     pfree(dv);
 
-    DBG_PRINT("bt_usb%u: device removed\n", devno);
+    printk("bt_usb%u: device removed\n", devno);
 }
 
 /*************************************************************
@@ -958,7 +958,7 @@ static void usbRxIntrComplete(struct urb *urb)
        (urb->status != -ECONNRESET) &&
        (urb->status != -ESHUTDOWN))
     {
-        DBG_VERBOSE("Rx INTR complete error, code %d\n", urb->status);
+        printk("%s:Rx INTR complete error, code %d\n", __func__, urb->status);
     }
     
     if(test_bit(DEVICE_CONNECTED, &(dv->flags)))
@@ -968,7 +968,7 @@ static void usbRxIntrComplete(struct urb *urb)
 		if(test_bit(DEVICE_SUSPENDED, &(dv->flags)))
 			return;
 
-	err = URB_SUBMIT(urb, GFP_ATOMIC);
+		err = URB_SUBMIT(urb, GFP_ATOMIC);
         /* Success or disconnect not errors */
         if((err !=0) && (err != -ENODEV))
         {
@@ -1026,7 +1026,7 @@ static void usbRxBulkComplete(struct urb *urb)
         }
         else
         {
-            DBG_PRINT("BULK data received - not sending up!\n");
+            printk("%s:BULK data received - not sending up!\n",__func__);
         }
     }
 
@@ -1035,17 +1035,16 @@ static void usbRxBulkComplete(struct urb *urb)
        (urb->status != -ECONNRESET) &&
        (urb->status != -ESHUTDOWN))
     {
-        DBG_VERBOSE("Rx BULK complete error, code %d\n", urb->status);
+        printk("Rx BULK complete error, code %d\n", urb->status);
     }
     if(test_bit(DEVICE_CONNECTED, &(dv->flags)))
   	{
 		err = URB_SUBMIT(urb, GFP_ATOMIC);
-	        /* Success or disconnect not errors */
-	        if((err !=0) && (err != -ENODEV))
-	        {
-	            printk(PRNPREFIX "Rx BULK resubmit error, status %d\n",
-	                   err);
-	        }
+		/* Success or disconnect not errors */
+		if((err !=0) && (err != -ENODEV))
+		{
+			printk(PRNPREFIX "Rx BULK resubmit error, status %d\n",err);
+		}
   	}
 }
 
@@ -1139,6 +1138,7 @@ static int16_t usbRxIntr(csr_dev_t *dv)
     void *buf;
     struct urb *rxintr;
 
+	printk(PRNPREFIX "%s\n", __func__);
 	if(test_bit(DEVICE_SUSPENDED, &(dv->flags)))
 		return -ENOENT;
 
@@ -1187,7 +1187,7 @@ static int16_t usbRxIntr(csr_dev_t *dv)
         printk(PRNPREFIX "Rx INTR alloc error, code %d\n", err);
         if(rxintr)
         {
-            pfree(rxintr);
+            usb_free_urb(rxintr);
         }
         if(buf)
         {
@@ -1269,7 +1269,7 @@ static int16_t usbRxBulk(csr_dev_t *dv, uint8_t number)
         printk(PRNPREFIX "Rx BULK alloc error, code %d\n", err);
         if(rxbulk)
         {
-            pfree(rxbulk);
+            usb_free_urb(rxbulk);
         }
         if(buf)
         {
@@ -1380,7 +1380,7 @@ static int16_t usbRxIsoc(csr_dev_t *dv, uint8_t number)
  *      void
  *
  *************************************************************/
-static void startListen(csr_dev_t *dv)
+void startListen(csr_dev_t *dv)
 {
     int res;
     int i;
@@ -1415,7 +1415,7 @@ static void startListen(csr_dev_t *dv)
 #endif        
     }
 
-    DBG_PRINT("Listen loop started, code %i\n", res);
+    printk("Listen loop started, code %i\n", res);
 }
 
 /*************************************************************
@@ -1866,12 +1866,10 @@ int csrUsbProbe(struct usb_interface *intf,
        test_bit(BULK_OUT_READY, &dv->endpoint_present) &&
        test_bit(ISOC_OUT_READY, &dv->endpoint_present) &&
        test_bit(ISOC_IN_READY, &dv->endpoint_present) &&
-       test_bit(INTR_IN_READY, &dv->endpoint_present) &&
-       !test_bit(LISTEN_STARTED, &(dv->flags)))
+       test_bit(INTR_IN_READY, &dv->endpoint_present))
     {
         DBG_PRINT("All required endpoints found, starting loop\n");
        set_bit(DEVICE_CONNECTED, &(dv->flags)); 
-       startListen(dv);
 
         DBG_PRINT("creating readerThread\n");
         /* Start the reader thread */
