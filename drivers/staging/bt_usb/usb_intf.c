@@ -162,6 +162,7 @@ int readerThread(void *parm)
         }
     }
 
+	printk("%s: Exit\n",__func__);
     /* Done */
     clear_bit(R_THREAD_RUNNING, &(dv->flags));
     complete_and_exit(&dv->reader_thread_exit, 0);
@@ -516,8 +517,9 @@ bool UsbDev_Tx(uint8_t devno, uint8_t channel, uint8_t *data, uint16_t size)
 
     if(dv == NULL)
    {
-   	printk("bt_usb: Device not initialized\n");
-	return false;
+		printk("%s: Device not initialized\n",__func__);
+		pfree(data);
+		return false;
    }
     res = false;
     if((size > 0) &&

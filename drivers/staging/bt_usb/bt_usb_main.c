@@ -134,6 +134,7 @@ static int callcount;
 static int bt_usb_major = BT_USB_MAJOR;
 static bt_usb_instance_t *instances = NULL;
 static struct semaphore inst_sem;
+static int inst_id = 0;
 
 #ifdef BT_USB_DEBUG
 void dumpData(uint8_t *data, uint16_t len)
@@ -478,9 +479,7 @@ static ssize_t bt_usb_write(struct file *file, const char __user *buf, size_t co
     int minor;
     int ret = -1;
 
-#ifdef BT_USB_DEBUG
-    printk("BT_USB: write, count = %ld\n",count);
-#endif
+    printk("BT_USB: write, count = %d\n",count);
     down(&inst_sem);
 
     inst = (bt_usb_instance_t  *)file->private_data;
@@ -610,6 +609,7 @@ static int bt_usb_open(struct inode *inode, struct file *filp)
     	return -ENOMEM;
     }
     inst->minor = minor;
+    inst_id = minor;
     inst->first = NULL;
     inst->last = NULL;
     inst->count = 0;
@@ -626,29 +626,25 @@ static int bt_usb_open(struct inode *inode, struct file *filp)
     return 0;
 }
 
-static int bt_usb_release(struct inode *inode, struct file *filp)
+void bt_usb_cleanup(csr_dev_t *dv)
 {
     bt_usb_instance_t *inst;
     read_q_elm_t *ptr;
     read_q_elm_t *next;
-    csr_dev_t *dv;
+	if(!test_bit(LISTEN_STARTED, &dv->flags))
+	{
+		printk("%s: Device not opened\n",__func__);
+		return ;
+	}
 
-    inst = (bt_usb_instance_t *)filp->private_data;
-
-    /*
-     * Mark device as dead so no more
-     * messages are added to the queue.
-     */
-    //down(&inst_sem);
-    //&instances[inst->minor] = NULL;//sachin - check latetr
-    //up(&inst_sem);
-
-#ifdef BT_USB_DEBUG
-    printk(KERN_ALERT "bt_usb%u: release called\n", inst->minor);
-#endif
+	if(instances == NULL)
+	{
+		printk(KERN_ALERT "%s: inst is NULL\n", __func__);
+		return;
+	}
+	inst = &instances[inst_id];
 
     down(&inst->access_sem);
-
     ptr = inst->first;
     while(ptr)
     {
@@ -666,18 +662,29 @@ static int bt_usb_release(struct inode *inode, struct file *filp)
     inst->count = 0;   
     inst->in_use = false;
     wake_up_interruptible_all(&inst->read_q);
-#ifdef CONFIG_USB_SUSPEND
-/*	UsbDev_PmEnable(inst->minor); */
-#endif
 
     up(&inst->access_sem);
-    dv = devLookup(inst->minor);
+
+}
+
+static int bt_usb_release(struct inode *inode, struct file *filp)
+{
+    csr_dev_t *dv;
+
+    dv = devLookup(inst_id);
     if(dv == NULL)
 	{
 		printk("%s: Device not initialized\n",__func__);
 		return false;
 	}
 
+	if(!test_bit(LISTEN_STARTED, &dv->flags))
+	{
+		printk("%s: Device not opened\n",__func__);
+		up(&dv->devlock);
+		return false;
+	}
+	bt_usb_cleanup(dv);
     usbCleanUrbs(dv);
     QueueFree(dv);
 	up(&dv->devlock);
