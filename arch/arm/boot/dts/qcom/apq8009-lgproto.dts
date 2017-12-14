@@ -23,6 +23,11 @@
 	compatible = "qcom,apq8009-mtp", "qcom,apq8009", "qcom,mtp";
 	qcom,msm-id = <265 2>;
 	qcom,board-id= <10 0x1>;
+
+	bluetooth: bt_qca9379 {
+		compatible = "qca,qca9379";
+		qca,bt-reset-gpio = <&msm_gpio 47 0x0>; /* BT_EN */
+	};
 };
 
 &qcom_camera1 {
@@ -133,3 +138,5 @@
 	status = "ok";
 	qcom,disable-bms;
 };
+
+

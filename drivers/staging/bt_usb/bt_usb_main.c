@@ -478,8 +478,11 @@ static ssize_t bt_usb_write(struct file *file, const char __user *buf, size_t co
     int payload_size = 0;
     int minor;
     int ret = -1;
+    csr_dev_t *dv;
 
+#ifdef BT_USB_DEBUG
     printk("BT_USB: write, count = %d\n",count);
+#endif
     down(&inst_sem);
 
     inst = (bt_usb_instance_t  *)file->private_data;
@@ -496,6 +499,13 @@ static ssize_t bt_usb_write(struct file *file, const char __user *buf, size_t co
         return -ENODEV;
     }
     up(&inst_sem);
+    dv = devLookup(minor);
+    if(dv == NULL)
+   {
+		printk("%s: Device not initialized\n",__func__);
+		return false;
+   }
+	up(&dv->devlock);
 
     if (count > 1)
     {
@@ -531,7 +541,7 @@ static ssize_t bt_usb_write(struct file *file, const char __user *buf, size_t co
                 printk("channel = %d, data dump: \n", channel);
                 dumpData(payload,payload_size);
 #endif
-                UsbDev_Tx(minor, channel, payload, payload_size);
+                ret = UsbDev_Tx(minor, channel, payload, payload_size);
             }
             else
             {
@@ -565,13 +575,13 @@ static int bt_usb_open(struct inode *inode, struct file *filp)
     /* Is device minor within range? */
     if (minor >= BT_USB_COUNT)
     {
-        printk("bt_usb: count exceeded");
+        printk("bt_usb: count exceeded\n");
         return -ENXIO;
     }
     
     if(!devExist(minor))
     {
-        printk("bt_usb: no device probed yet");
+        printk("bt_usb: no device probed yet\n");
         return -ENXIO;
     }
     dv = devLookup(minor);

@@ -182,7 +182,8 @@ typedef struct
     uint8_t                      intr_ep;
     uint8_t                      intr_interval;
     uint16_t                     intr_size;
-    struct urb                *intr_urb;
+    struct urb                   *intr_urb;
+	void                         *intr_buf;
     uint8_t                      *intr_reassembly;
     uint16_t                     intr_remain;
     uint16_t                     intr_total;
@@ -190,6 +191,7 @@ typedef struct
     /* BULK-in endpoint (acl) */
     uint8_t                      bulk_in_ep;
     struct urb                   *bulk_urb[MAX_RX_BULK_URBS];
+    void 						 *bulk_buf[MAX_RX_BULK_URBS];
 
     /* BULK-out endpoint (acl) */
     uint8_t                      bulk_out_ep;
