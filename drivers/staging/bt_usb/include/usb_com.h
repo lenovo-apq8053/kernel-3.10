@@ -69,6 +69,7 @@ Public Defines
  *----------------------------------------------------------------------------*/
 void hcCom_ReceiveMsg(void *msg, uint8_t bcspChannel, uint8_t rel);
 
+void    bt_usb_cleanup(csr_dev_t *dv);
 bool  UsbDrv_Start(char *deviceName);
 void    UsbDrv_Stop(void);
 

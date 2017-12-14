@@ -282,7 +282,7 @@ void csrUsbDisconnect(struct usb_interface *intf)
     }
 
     up(&csr_dev_sem); /* XXX keep? */
-
+	bt_usb_cleanup(dv);
     if (test_bit(R_THREAD_RUNNING, &(dv->flags)))
     {
         printk("Stopping the reader thread\n");
@@ -379,7 +379,7 @@ static void usbTxBulkComplete(struct urb *urb)
     }
     else
     {
-        DBG_VERBOSE("Tx BULK complete\n");
+        printk("Tx BULK complete\n");
     }
 
     /* Free the data no matter what */
@@ -416,7 +416,7 @@ static void usbTxCtrlComplete(struct urb *urb)
     }
     else
     {
-        DBG_VERBOSE("Tx CTRL complete\n");
+        printk("Tx CTRL complete\n");
     }
 
     /* Free the data no matter what */
@@ -941,6 +941,8 @@ static void usbRxIntrComplete(struct urb *urb)
     dv = (csr_dev_t *)urb->context;
 
 
+    printk("%s:status=%d,len=%d\n", __func__,
+			urb->status,urb->actual_length);
     /* Data is available */
     if((urb->status == 0) && (urb->actual_length > 0))
     {
@@ -1004,6 +1006,8 @@ static void usbRxBulkComplete(struct urb *urb)
     int16_t err;
 
     dv = (csr_dev_t *)urb->context;
+    printk("%s:status=%d,len=%d\n", __func__,
+			urb->status,urb->actual_length);
 
     /* Data is available */
     if((urb->status == 0) && (urb->actual_length > 0))
@@ -1871,7 +1875,7 @@ int csrUsbProbe(struct usb_interface *intf,
         DBG_PRINT("All required endpoints found, starting loop\n");
        set_bit(DEVICE_CONNECTED, &(dv->flags)); 
 
-        DBG_PRINT("creating readerThread\n");
+        printk("bt_usb: creating readerThread\n");
         /* Start the reader thread */
         // victor change: kernel_thread is not supported in kernel
         //kernel_thread(readerThread, dv, 0);
