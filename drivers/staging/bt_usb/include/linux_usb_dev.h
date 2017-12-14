@@ -36,7 +36,7 @@ extern "C" {
 
 
 void UsbDev_Rx(uint8_t devno);
-bool UsbDev_Tx(uint8_t devno, uint8_t channel, uint8_t *data, uint16_t size);
+int UsbDev_Tx(uint8_t devno, uint8_t channel, uint8_t *data, uint16_t size);
 void UsbDev_Reset(uint8_t devno);
 
 #endif /* !USBDEV_H__ */

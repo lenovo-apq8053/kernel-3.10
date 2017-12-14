@@ -214,7 +214,8 @@ void usbCleanUrbs(csr_dev_t *dv)
 
     if(dv->intr_urb != NULL)
     {
-        DBG_PRINT("Unlink and free Rx INTR\n");
+        printk("%s:Unlink and free Rx INTR\n",__func__);
+		pfree(dv->intr_buf);
         URB_UNLINK(dv->intr_urb);
         usb_free_urb(dv->intr_urb);
         dv->intr_urb = NULL;
@@ -223,7 +224,8 @@ void usbCleanUrbs(csr_dev_t *dv)
     {
         if(dv->bulk_urb[i] != NULL)
         {
-            DBG_PRINT("Unlink and free Rx BULK_%i\n", i);
+            DBG_PRINT("%s:Unlink and free Rx BULK_%i\n", __func__,i);
+			pfree(dv->bulk_buf[i]);
             URB_UNLINK(dv->bulk_urb[i]);
             usb_free_urb(dv->bulk_urb[i]);
             dv->bulk_urb[i] = NULL;
@@ -278,10 +280,11 @@ void csrUsbDisconnect(struct usb_interface *intf)
         /* Grab device and mark slot as unused. */
         dv = csr_dev[devno];
         csr_dev[devno] = NULL;
-        down(&dv->devlock);
+       
     }
 
     up(&csr_dev_sem); /* XXX keep? */
+    down(&dv->devlock);
 	bt_usb_cleanup(dv);
     if (test_bit(R_THREAD_RUNNING, &(dv->flags)))
     {
@@ -318,9 +321,11 @@ void csrUsbDisconnect(struct usb_interface *intf)
     clear_bit(DFU_READY, &(dv->endpoint_present));
 #endif
 
-    /* Let thing settle, before freeing memory */
+#if 0
+	/* Let thing settle, before freeing memory */
     set_current_state(TASK_INTERRUPTIBLE);
     schedule_timeout(2*HZ);
+#endif
 
     if(csr_setup.ext_iface == true)
     {
@@ -338,6 +343,7 @@ void csrUsbDisconnect(struct usb_interface *intf)
     /* Make sure everything has been freed */
     QueueFree(dv);
     usbCleanUrbs(dv);
+	up(&dv->devlock);
 
     device_set_wakeup_capable(&(uDev->dev),false);
     device_set_wakeup_enable(&(uDev->dev),0);
@@ -379,7 +385,7 @@ static void usbTxBulkComplete(struct urb *urb)
     }
     else
     {
-        printk("Tx BULK complete\n");
+        DBG_VERBOSE("Tx BULK complete\n");
     }
 
     /* Free the data no matter what */
@@ -416,7 +422,7 @@ static void usbTxCtrlComplete(struct urb *urb)
     }
     else
     {
-        printk("Tx CTRL complete\n");
+        DBG_VERBOSE("Tx CTRL complete\n");
     }
 
     /* Free the data no matter what */
@@ -941,7 +947,7 @@ static void usbRxIntrComplete(struct urb *urb)
     dv = (csr_dev_t *)urb->context;
 
 
-    printk("%s:status=%d,len=%d\n", __func__,
+    DBG_VERBOSE("%s:status=%d,len=%d\n", __func__,
 			urb->status,urb->actual_length);
     /* Data is available */
     if((urb->status == 0) && (urb->actual_length > 0))
@@ -1006,7 +1012,7 @@ static void usbRxBulkComplete(struct urb *urb)
     int16_t err;
 
     dv = (csr_dev_t *)urb->context;
-    printk("%s:status=%d,len=%d\n", __func__,
+    DBG_VERBOSE("%s:status=%d,len=%d\n", __func__,
 			urb->status,urb->actual_length);
 
     /* Data is available */
@@ -1184,6 +1190,7 @@ static int16_t usbRxIntr(csr_dev_t *dv)
         else
         {
             dv->intr_urb = rxintr;
+            dv->intr_buf = buf;
         }
     }
     else
@@ -1266,6 +1273,7 @@ static int16_t usbRxBulk(csr_dev_t *dv, uint8_t number)
         else
         {
             dv->bulk_urb[number] = rxbulk;
+            dv->bulk_buf[number] = buf;
         }
     }
     else
@@ -1635,6 +1643,7 @@ int csrUsbProbe(struct usb_interface *intf,
 
     
     dv = csr_dev[devno] = zpmalloc(sizeof(*dv));
+	memset(dv,0x0,sizeof(*dv));
 
     /* Lock device and release device list lock. */
     init_MUTEX_LOCKED(&dv->devlock);

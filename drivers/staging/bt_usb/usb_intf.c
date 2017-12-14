@@ -507,46 +507,41 @@ void UsbDev_Rx(uint8_t devno)
  *      TRUE if the data can be buffered for transmission,
  *      otherwise FALSE
  *************************************************************/
-bool UsbDev_Tx(uint8_t devno, uint8_t channel, uint8_t *data, uint16_t size)
+int UsbDev_Tx(uint8_t devno, uint8_t channel, uint8_t *data, uint16_t size)
 {
     csr_dev_t *dv;
-    bool res;
+    int err;
 
     DBG_VERBOSE("Have received %i bytes from stack\n",size);
     dv = devLookup(devno);
-
     if(dv == NULL)
    {
 		printk("%s: Device not initialized\n",__func__);
 		pfree(data);
-		return false;
+		return -1;
    }
-    res = false;
     if((size > 0) &&
        test_bit(DEVICE_CONNECTED, &(dv->flags)))
     {
     
         if(channel == BCSP_CHANNEL_HCI)
         {
-            usbTxCtrl(dv, data, size);
-            res = true;
+            err = usbTxCtrl(dv, data, size);
         }
         else if(channel == BCSP_CHANNEL_ACL)
         {
-            usbTxBulk(dv, data, size);
-            res = true;
+            err = usbTxBulk(dv, data, size);
         }
 #ifdef CSR_BR_USB_USE_SCO_INTF 
         else if(channel == BCSP_CHANNEL_SCO)
         {
-            usbTxIsoc(dv, data, size);
-            res = true;
+            err = usbTxIsoc(dv, data, size);
         }
 #endif  
     }
     up(&dv->devlock);
 
-    return res;
+    return err;
 }
 /*************************************************************
  * NAME:

@@ -198,12 +198,6 @@
 		asoc-codec = <&stub_codec>, <&pm8909_conga_dig>;
 		asoc-codec-names = "msm-stub-codec.1", "tombak_codec";
 	};
-
-	bluetooth: bt_qca6174 {
-		compatible = "qca,qca6174";
-		qca,bt-reset-gpio = <&msm_gpio 47 0x0>; /* BT_EN */
-	};
-
 };
 
 &blsp1_uart1 {
