@@ -30,7 +30,6 @@
 #include <linux/version.h>
 #include <linux/module.h>
 #include <linux/workqueue.h>
-#include <linux/pci.h>
 
 #include "adf_os_defer_pvt.h"
 

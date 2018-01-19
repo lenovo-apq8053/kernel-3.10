@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -204,7 +204,7 @@ hif_usb_probe(struct usb_interface *interface, const struct usb_device_id *id)
 	if (hif_usb_configure(sc, &ol_sc->hif_hdl, interface))
 		goto err_config;
 
-	ol_sc->enableuartprint = 0;
+	ol_sc->enableuartprint = 1;
 	ol_sc->enablefwlog = 0;
 	ol_sc->enablesinglebinary = FALSE;
 	ol_sc->max_no_of_peers = 1;
@@ -400,7 +400,6 @@ static int hif_usb_reset_resume(struct usb_interface *intf)
 static struct usb_device_id hif_usb_id_table[] = {
 	{USB_DEVICE_AND_INTERFACE_INFO(VENDOR_ATHR, 0x9378, 0xFF, 0xFF, 0xFF)},
 	{USB_DEVICE_AND_INTERFACE_INFO(VENDOR_ATHR, 0x9379, 0xFF, 0xFF, 0xFF)},
-	{USB_DEVICE_AND_INTERFACE_INFO(0x043E, 0x7A85, 0xFF, 0xFF, 0xFF)},
 	{}			/* Terminating entry */
 };
 
