@@ -153,6 +153,13 @@ typedef struct
     wait_queue_head_t         wait;
 } usb_queue_t;
 
+struct usb_complete_context {
+	struct completion   done;
+	int         status;
+};
+
+#define BTUSB_URB_TIMEOUT           500
+
 /* Structure to hold the run-time device specific information */
 typedef struct
 {
@@ -213,7 +220,7 @@ typedef struct
 
 
 int readerThread(void *parm);
-int16_t usbTxCtrl(csr_dev_t *dv, void *data, uint16_t length);
+int usbTxCtrl(csr_dev_t *dv, void *data, uint16_t length);
 int16_t usbTxBulk(csr_dev_t *dv, void *data, uint16_t length);
 void startListen(csr_dev_t *dv);
 #ifdef CSR_BR_USB_USE_SCO_INTF

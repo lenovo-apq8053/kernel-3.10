@@ -462,6 +462,11 @@ void UsbDev_Rx(uint8_t devno)
     struct usb_qe *qe;
 
     dv = devLookup(devno);
+	if(dv == NULL)
+	{
+		printk("%s: Device not initialized\n",__func__);
+		return;
+	}
 
     if((atomic_read(&(dv->queue.count)) > 0 ) &&
        test_bit(DEVICE_CONNECTED, &(dv->flags)))
@@ -536,10 +541,14 @@ int UsbDev_Tx(uint8_t devno, uint8_t channel, uint8_t *data, uint16_t size)
         else if(channel == BCSP_CHANNEL_SCO)
         {
             err = usbTxIsoc(dv, data, size);
+			up(&dv->devlock);
         }
 #endif  
     }
-    up(&dv->devlock);
+	else
+	{
+		up(&dv->devlock);
+	}
 
     return err;
 }
@@ -561,6 +570,12 @@ void UsbDev_Reset(uint8_t devno)
     printk(PRNPREFIX "Resetting USB device..\n");
 
     dv = devLookup(devno);
+	if(dv == NULL)
+	{
+		printk("%s: Device not initialized\n",__func__);
+		return;
+	}
+
     usb_reset_device(dv->dev);
 
     up(&dv->devlock);

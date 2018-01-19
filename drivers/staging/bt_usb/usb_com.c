@@ -355,6 +355,45 @@ void csrUsbDisconnect(struct usb_interface *intf)
     printk("bt_usb%u: device removed\n", devno);
 }
 
+static int btusb_wait_urb(struct urb * urb, int timeout)
+{
+	struct usb_complete_context ctx;
+	unsigned long expire;
+	int retval;
+begin:
+	init_completion(&ctx.done);
+	urb->context = &ctx;
+	urb->actual_length = 0;
+
+	retval = usb_submit_urb(urb, GFP_NOIO);
+	if (unlikely(retval))
+		goto out;
+
+	expire = msecs_to_jiffies(timeout);
+	if (!wait_for_completion_timeout(&ctx.done, expire)) {
+		usb_kill_urb(urb);
+		retval = (ctx.status == -ENOENT ? -ETIMEDOUT : ctx.status);
+
+		printk("####btusb_wait_urb retval= %d,%s,timed out on ep%d%s len=%u/%u\n",
+			retval,
+			current->comm,
+			usb_endpoint_num(&urb->ep->desc),
+			usb_urb_dir_in(urb) ? "in" : "out",
+			urb->actual_length,
+			urb->transfer_buffer_length);
+			if(retval == -ETIMEDOUT)
+				goto begin;
+
+	}
+	else
+	{
+		retval = ctx.status;
+	}
+out:
+	usb_free_urb(urb);
+	return retval;
+}
+
 /*************************************************************
  * NAME:
  *      usbTxBulkComplete (internal)
@@ -375,6 +414,7 @@ static void usbTxBulkComplete(struct urb *urb, struct pt_regs *regs)
 static void usbTxBulkComplete(struct urb *urb)
 #endif
 {
+	struct usb_complete_context  *ctx = urb->context;
     if((urb->status != 0) &&
        (urb->status != -ENOENT) &&
        (urb->status != -ECONNRESET) &&
@@ -388,8 +428,8 @@ static void usbTxBulkComplete(struct urb *urb)
         DBG_VERBOSE("Tx BULK complete\n");
     }
 
-    /* Free the data no matter what */
-    kfree(urb->transfer_buffer);
+	ctx->status = urb->status;
+	complete(&ctx->done);
 }
 
 /*************************************************************
@@ -412,8 +452,9 @@ static void usbTxCtrlComplete(struct urb *urb, struct pt_regs *regs)
 static void usbTxCtrlComplete(struct urb *urb)
 #endif
 {
+	struct usb_complete_context  *ctx = urb->context;
+
     if((urb->status != 0) &&
-       (urb->status != -ENOENT) &&
        (urb->status != -ECONNRESET) &&
        (urb->status != -ESHUTDOWN))
     {
@@ -422,11 +463,12 @@ static void usbTxCtrlComplete(struct urb *urb)
     }
     else
     {
-        DBG_VERBOSE("Tx CTRL complete\n");
+        DBG_VERBOSE("%s, urb=%p\n",__func__,urb);
     }
 
-    /* Free the data no matter what */
-    kfree(urb->transfer_buffer);
+	ctx->status = urb->status;
+	complete(&ctx->done);
+
 }
 
 /*************************************************************
@@ -588,6 +630,7 @@ int16_t usbTxIsoc(csr_dev_t *dv, void *data, uint16_t length)
     return err;
 }
 #endif
+
 /*************************************************************
  * NAME:
  *      usbTxCtrl (internal)
@@ -600,9 +643,9 @@ int16_t usbTxIsoc(csr_dev_t *dv, void *data, uint16_t length)
  *      0 if successful, otherwise an error message
  *
  *************************************************************/
-int16_t usbTxCtrl(csr_dev_t *dv, void *data, uint16_t length)
+int usbTxCtrl(csr_dev_t *dv, void *data, uint16_t length)
 {
-    int16_t err;
+    int err;
     struct urb *txctrl;
 
 #ifdef CONFIG_ARCH_TEGRA
@@ -628,34 +671,18 @@ int16_t usbTxCtrl(csr_dev_t *dv, void *data, uint16_t length)
                              data,
                              length,
                              usbTxCtrlComplete,
-                             dv);
-	
-        err = URB_SUBMIT(txctrl, GFP_KERNEL);
+                             NULL);
+		up(&dv->devlock);
 
-        if(err != 0)
-        {
-            printk(PRNPREFIX "Tx CTRL submit error, code %d\n", err);
-
-            /* Attempt to resubmit */
-            err = URB_SUBMIT(txctrl, GFP_KERNEL);
-            if(err !=0 )
-            {
-                printk(PRNPREFIX "Tx CTRL re-submit error, status: %d\n",
-                       err);
-            }
-        }
-        else
-        {
-            DBG_VERBOSE("Transmitted %i CTRL bytes\n", length);
-        }
-
-        /* Free the URB */
-        usb_free_urb(txctrl);
+		err = btusb_wait_urb(txctrl,BTUSB_URB_TIMEOUT);
+		if(err != 0)
+			printk("%s:btusb_wait_urb error code %d\n",__func__, err);
     }
     else
     {
         printk(PRNPREFIX "Tx CTRL alloc error, code %d\n", err);
     }
+	kfree(data);
     return err;
 }
 
@@ -698,33 +725,17 @@ int16_t usbTxBulk(csr_dev_t *dv, void *data, uint16_t length)
                           data,
                           length,
                           usbTxBulkComplete,
-                          dv);
-        err = URB_SUBMIT(txbulk, GFP_KERNEL);
-
-        if (err!=0)
-        {
-            printk(PRNPREFIX "Tx BULK submit error, code %d\n", err);
-
-            /* Attempt to resubmit */
-            err = URB_SUBMIT(txbulk, GFP_KERNEL);
-            if(err !=0 )
-            {
-                printk(PRNPREFIX "Tx BULK re-submit error, status: %d\n",
-                       err);
-            }
-        }
-        else
-        {
-            DBG_VERBOSE("Transmitted %i BULK bytes\n", length);
-        }
-
-        /* Free the URB */
-        usb_free_urb(txbulk);
+                          NULL);
+		up(&dv->devlock);
+		err = btusb_wait_urb(txbulk,BTUSB_URB_TIMEOUT);
+		if(err != 0)
+			printk("%s:btusb_wait_urb error code %d\n",__func__, err);
     }
     else
     {
         printk(PRNPREFIX "Tx BULK alloc error, code %d\n", err);
     }
+	kfree(data);
     return err;
 }
 
