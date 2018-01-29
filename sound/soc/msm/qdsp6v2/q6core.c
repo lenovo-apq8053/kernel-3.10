@@ -384,12 +384,11 @@ int core_get_adsp_ver(void)
 		goto fail_cmd;
 	}
 
-	mutex_unlock(&(q6core_lcl.cmd_lock));
 	ret = wait_event_timeout(q6core_lcl.cmd_req_wait,
 			(q6core_lcl.cmd_resp_received_flag ==
 				FLAG_AVCS_GET_VERSIONS_RESULT),
 				msecs_to_jiffies(TIMEOUT_MS));
-	mutex_lock(&(q6core_lcl.cmd_lock));
+
 	if (!ret) {
 		pr_err("%s: wait_event timeout for AVCS_GET_VERSIONS_RESULT\n",
 				__func__);
