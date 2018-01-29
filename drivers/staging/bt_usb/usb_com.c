@@ -193,6 +193,17 @@ static int csrSlotFromUsb(struct usb_device *uDev)
     }
     return -1;
 }
+#ifdef NAPLES_HCI_TIMER
+static void btusb_defer_kevent(csr_dev_t *dv, int kevent)
+{
+	set_bit(kevent, &dv->flags);
+	if (!schedule_work(&dv->kevent)) {
+		printk("%s: kevent %d may have been dropped\n",__func__, kevent);
+	} else {
+		printk("%s: kevent %d scheduled\n", __func__,kevent);
+	}
+}
+#endif
 
 /*************************************************************
  * NAME:
@@ -339,12 +350,15 @@ void csrUsbDisconnect(struct usb_interface *intf)
         dv->isoc_reassembly = NULL;
     }
 #endif
-
+	cancel_work_sync(&dv->kevent);
     /* Make sure everything has been freed */
     QueueFree(dv);
     usbCleanUrbs(dv);
 	up(&dv->devlock);
-
+#ifdef NAPLES_HCI_TIMER
+	if(dv->hcicmd.in_use)
+		del_timer_sync(&dv->hcicmd.timer);
+#endif
     device_set_wakeup_capable(&(uDev->dev),false);
     device_set_wakeup_enable(&(uDev->dev),0);
     /* Nothing should be using the device at
@@ -628,6 +642,14 @@ int16_t usbTxIsoc(csr_dev_t *dv, void *data, uint16_t length)
         printk(PRNPREFIX "Tx ISOC alloc error\n");
     }
     return err;
+}
+#endif
+#ifdef NAPLES_HCI_TIMER
+static void event_timer(unsigned long data)
+{
+	csr_dev_t *dv = (csr_dev_t *)data;
+	printk("########%s#######\n",__func__);
+	btusb_defer_kevent(dv, EVENT_INT_RX_HALT);
 }
 #endif
 
@@ -957,6 +979,10 @@ static void usbRxIntrComplete(struct urb *urb)
 
     dv = (csr_dev_t *)urb->context;
 
+    if(urb->status != 0)
+    {
+        printk("%s:Rx INTR complete error, code %d\n", __func__, urb->status);
+    }
 
     DBG_VERBOSE("%s:status=%d,len=%d\n", __func__,
 			urb->status,urb->actual_length);
@@ -972,14 +998,7 @@ static void usbRxIntrComplete(struct urb *urb)
             printk("Received INTR data - not sending up!\n");
         }
     }
-    if((urb->status != 0) &&
-       (urb->status != -ENOENT) &&
-       (urb->status != -ECONNRESET) &&
-       (urb->status != -ESHUTDOWN))
-    {
-        printk("%s:Rx INTR complete error, code %d\n", __func__, urb->status);
-    }
-    
+
     if(test_bit(DEVICE_CONNECTED, &(dv->flags)))
     {
         int16_t err;
@@ -989,10 +1008,11 @@ static void usbRxIntrComplete(struct urb *urb)
 
 		err = URB_SUBMIT(urb, GFP_ATOMIC);
         /* Success or disconnect not errors */
-        if((err !=0) && (err != -ENODEV))
+        if(err !=0)
         {
-            printk(PRNPREFIX "Rx INTR resubmit error, status %d\n",
-                   err);
+            printk(" %s:resubmit error %d\n",__func__, err);
+			err = URB_SUBMIT(urb, GFP_ATOMIC);
+			return;
         }
         
     }
@@ -1598,6 +1618,44 @@ static void handleDfuInterface(csr_dev_t *dv, int ifnum)
     printk("bt_usb%u: DFU interface %u\n", dv->minor, ifnum);
 }
 #endif
+
+int usb_reset_txctrl(struct usb_device *dev, int pipe)
+{
+	int result;
+	int endp = usb_pipeendpoint(pipe);
+
+	if (usb_pipein(pipe))
+		endp |= USB_DIR_IN;
+
+	result = usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
+		USB_REQ_CLEAR_FEATURE, USB_RECIP_ENDPOINT,
+		USB_ENDPOINT_HALT, endp, NULL, 0,
+		BTUSB_URB_TIMEOUT/2);
+
+	if (result < 0)
+		return result;
+
+	return 0;
+}
+
+static void btusb_deferred_kevent(struct work_struct *work)
+{
+    int err = -ENOMEM;
+
+	csr_dev_t *dv = container_of(work, csr_dev_t, kevent);
+	printk("#####%s \n",__func__);
+	if (test_bit(EVENT_INT_RX_HALT, &(dv->flags))) {
+		clear_bit(EVENT_INT_RX_HALT, &dv->flags);
+
+		err = usb_reset_txctrl(dv->dev, usb_sndctrlpipe(dv->dev, dv->ctrl_ep));
+		if (err < 0) {
+			printk(" %s: tx ctrl clear halt error %d\n",__func__,err);
+			return;
+		}
+	}
+}
+
+
 /*************************************************************
  * NAME:
  *      csrUsbProbe
@@ -1725,6 +1783,7 @@ int csrUsbProbe(struct usb_interface *intf,
        and can therefore be setup statically */
     dv->ctrl_ep = USB_ENDPOINT_XFER_CONTROL;
         printk("bt_usb%u: Control endpoint set \n", devno);
+	usb_clear_halt(uDev, usb_sndctrlpipe(uDev,dv->ctrl_ep));
 
     /* Scan HCI/ACL interface for endpoints */
     for (alt = 0; alt < intf->num_altsetting; alt++)
@@ -1755,6 +1814,7 @@ int csrUsbProbe(struct usb_interface *intf,
                     !test_bit(BULK_IN_READY, &dv->endpoint_present))
                 {
                     handleBulkInEndpoint(dv, alt, endpoint);
+					usb_clear_halt(uDev, usb_rcvbulkpipe(uDev,endpoint->bEndpointAddress));
                 }
             }
 
@@ -1771,6 +1831,8 @@ int csrUsbProbe(struct usb_interface *intf,
                     !test_bit(BULK_OUT_READY, &dv->endpoint_present))
                 {
                     handleBulkOutEndpoint(dv, alt, endpoint);
+					usb_clear_halt(uDev, usb_sndbulkpipe(uDev,endpoint->bEndpointAddress));
+
                 }
             }
 
@@ -1787,6 +1849,7 @@ int csrUsbProbe(struct usb_interface *intf,
                    !test_bit(INTR_IN_READY, &dv->endpoint_present))
                 {
                     handleIntrInEndpoint(dv, alt, endpoint);
+					usb_clear_halt(uDev, usb_rcvintpipe(uDev,endpoint->bEndpointAddress));
                 }
             }
             else
@@ -1900,6 +1963,7 @@ int csrUsbProbe(struct usb_interface *intf,
         // victor change: kernel_thread is not supported in kernel
         //kernel_thread(readerThread, dv, 0);
         kthread_run(readerThread, dv, "bt_usb%u", dv->minor);
+		INIT_WORK(&dv->kevent, btusb_deferred_kevent);
     }
 
     /*
@@ -1908,6 +1972,13 @@ int csrUsbProbe(struct usb_interface *intf,
      */
     up(&dv->devlock);
     device_init_wakeup(&(uDev->dev),1);
+#ifdef NAPLES_HCI_TIMER
+	dv->hcicmd.in_use = false;
+	init_timer(&dv->hcicmd.timer);
+	dv->hcicmd.timer.data = (unsigned long)dv;
+	dv->hcicmd.timer.function = event_timer;
+	spin_lock_init(&dv->hcicmd_lock);
+#endif
     printk("bt_usb%u: device_init_wakeup is done\n",devno);
     return 0;
 }
