@@ -104,6 +104,9 @@ extern "C" {
 #define R_THREAD_RUNNING      3
 #define DEVICE_SUSPENDED      4
 
+#define EVENT_INT_RX_HALT     5
+#define EVENT_INT_RX_OVERFLOW 6
+
 /* Endpoint availability flags */
 #define BULK_IN_READY         1
 #define BULK_OUT_READY        2
@@ -153,12 +156,43 @@ typedef struct
     wait_queue_head_t         wait;
 } usb_queue_t;
 
+struct complete_event
+{
+    uint8_t                type;
+    uint8_t                len;
+	uint8_t                noc;
+	uint16_t               opcode;
+	uint8_t                status;
+} __attribute__ ((packed));
+
+struct status_event
+{
+    uint8_t                type;
+    uint8_t                len;
+	uint8_t                status;
+	uint8_t                noc;
+	uint16_t               opcode;
+} __attribute__ ((packed));
+
 struct usb_complete_context {
 	struct completion   done;
 	int         status;
 };
 
-#define BTUSB_URB_TIMEOUT           500
+struct hci_cmd {
+	bool                        in_use;
+	struct timer_list            timer;
+	uint16_t                   opcode;
+	unsigned char              payload[4096];
+	uint16_t                   payload_size;
+};
+
+#define NAPLES_HCI_TIMER 1
+#define BTUSB_URB_TIMEOUT           800
+#define BTUSB_EVENT_TIMEOUT         1500
+
+#define HCI_COMMAND_COMPLETE_EVT            0x0E
+#define HCI_COMMAND_STATUS_EVT              0x0F
 
 /* Structure to hold the run-time device specific information */
 typedef struct
@@ -216,6 +250,10 @@ typedef struct
     uint8_t                      isoc_out_ep;
     uint16_t                     isoc_out_size;
     uint8_t                      isoc_out_interval;
+	struct hci_cmd               hcicmd;
+	spinlock_t                   hcicmd_lock;
+	struct usb_complete_context  rx_event;
+	struct work_struct			 kevent;
 } csr_dev_t;
 
 

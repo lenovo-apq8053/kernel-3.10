@@ -144,22 +144,15 @@ void dumpData(uint8_t *data, uint16_t len)
     int i;
 
     idx = 0;
+	memset(buffer,0x0,sizeof(buffer));
 
+	printk("\n");
     for(i=0;i<len;i++)
     {
-        idx+=sprintf(&buffer[idx],"0x%02x ",data[i]);
+		printk("%2x ", data[i]);
 
-        if (((i+1)%16) == 0)
-        {
-            printk("%s\n",buffer);
-            idx=0;
-        }
     }
-
-    if (idx)
-    {
-        printk("%s\n",buffer);
-    }
+	printk("\n");
 }
 #endif
 
@@ -291,22 +284,58 @@ static ssize_t bt_usb_readv(struct file *filp, const struct iovec *io ,
     return (no);
 }
 
+uint16_t find_event_opcode(char *buf,int len)
+{
+	struct complete_event cmp_evt;
+	struct status_event   status_evt;
+	if(len >= sizeof(struct complete_event))
+	{
+		if(buf[0] == HCI_COMMAND_COMPLETE_EVT)
+		{
+			memcpy(&cmp_evt,buf,sizeof(struct complete_event));
+			return cmp_evt.opcode;
+		}
+		if(buf[0] == HCI_COMMAND_STATUS_EVT)
+		{
+			memcpy(&status_evt,buf,sizeof(struct complete_event));
+			return status_evt.opcode;
+		}
+	}
+	return 0;
+
+}
+
 static ssize_t bt_usb_read(struct file *file, char __user *buf, size_t size, loff_t *ppos)
 {
     bt_usb_instance_t *inst;
     ssize_t n = -1;
     int ret = -1;
     read_q_elm_t *ptr = NULL;
+    csr_dev_t *dv;
+    int minor;
+    unsigned char channel = 0;
+#ifdef NAPLES_HCI_TIMER
+	uint16_t opcode = 0;
+	int buflen = 0;
+#endif
 
     inst = (bt_usb_instance_t *)file->private_data;
     if (inst == NULL){
         printk("BT_USB: read : error, file->private_data is NULL\n");
         return -ENODEV;
     }
+	minor = inst->minor;
 
 #ifdef BT_USB_DEBUG
     printk("BT_USB: read: try to read %d data\n", size);
 #endif
+	dv = devLookup(minor);
+	if(dv == NULL)
+	{
+		printk("%s: Device not initialized\n",__func__);
+		return false;
+	}
+	up(&dv->devlock);
 
     /* Grab lock and wait for data in queue */
     if (down_interruptible(&inst->access_sem))
@@ -338,7 +367,6 @@ static ssize_t bt_usb_read(struct file *file, char __user *buf, size_t size, lof
 
     if (size > 1)
     {
-        unsigned char channel;
         ptr = inst->first;
 
         inst->first = ptr->next;
@@ -356,6 +384,28 @@ static ssize_t bt_usb_read(struct file *file, char __user *buf, size_t size, lof
         {
             case BCSP_CHANNEL_HCI:
                 channel = H4_TYPE_EVENT;
+#ifdef NAPLES_HCI_TIMER
+				buflen = ptr->msg->buflen;
+				opcode = find_event_opcode(ptr->msg->buf,ptr->msg->buflen);
+				spin_lock(&dv->hcicmd_lock);
+#ifdef NAPLES_HCI_TIMER_DEBUG
+				printk("%s:event opcode 0x%x, cmd opcode 0x%x\n",
+						__func__,opcode,dv->hcicmd.opcode);
+#endif
+				if(dv->hcicmd.in_use == true && dv->hcicmd.opcode != 0x0 && opcode == dv->hcicmd.opcode)
+				{
+				//printk("%s: del_timer\n",__func__);
+
+					del_timer_sync(&dv->hcicmd.timer);
+					dv->hcicmd.in_use = false;
+					dv->hcicmd.opcode = 0x0;
+#ifdef NAPLES_HCI_TIMER_DEBUG
+					dumpData(ptr->msg->buf,ptr->msg->buflen);
+#endif
+				}
+				spin_unlock(&dv->hcicmd_lock);
+#endif //NAPLES_HCI_TIMER
+
                 break;
             case BCSP_CHANNEL_ACL:
                 channel = H4_TYPE_ACL_DATA;
@@ -541,6 +591,26 @@ static ssize_t bt_usb_write(struct file *file, const char __user *buf, size_t co
                 printk("channel = %d, data dump: \n", channel);
                 dumpData(payload,payload_size);
 #endif
+#ifdef NAPLES_HCI_TIMER
+				if(channel == BCSP_CHANNEL_HCI)
+				{
+					spin_lock(&dv->hcicmd_lock);
+					if (dv->hcicmd.in_use == false)
+					{
+						dv->hcicmd.timer.expires = jiffies + msecs_to_jiffies(BTUSB_EVENT_TIMEOUT);
+						dv->hcicmd.in_use = true;
+						dv->hcicmd.opcode = buf[1] + (buf[2] << 8);
+						memcpy(dv->hcicmd.payload,payload,payload_size);
+						add_timer(&dv->hcicmd.timer);
+#ifdef NAPLES_HCI_TIMER_DEBUG
+						dumpData(payload,payload_size);
+						printk("%s: add timer for opcode 0x%x\n",__func__,dv->hcicmd.opcode);
+#endif
+					}
+					spin_unlock(&dv->hcicmd_lock);
+				}
+#endif //NAPLES_HCI_TIMER
+
                 ret = UsbDev_Tx(minor, channel, payload, payload_size);
             }
             else
