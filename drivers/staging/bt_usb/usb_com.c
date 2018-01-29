@@ -325,8 +325,10 @@ void csrUsbDisconnect(struct usb_interface *intf)
     clear_bit(BULK_IN_READY, &(dv->endpoint_present));
     clear_bit(BULK_OUT_READY, &(dv->endpoint_present));
     clear_bit(INTR_IN_READY, &(dv->endpoint_present));
+#ifdef CSR_BR_USB_USE_SCO_INTF
     clear_bit(ISOC_IN_READY, &(dv->endpoint_present));
     clear_bit(ISOC_OUT_READY, &(dv->endpoint_present));
+#endif
     clear_bit(EXTRA_INTERFACE_READY, &(dv->endpoint_present));
 #ifdef CSR_BR_USB_USE_DFU_INTF    
     clear_bit(DFU_READY, &(dv->endpoint_present));
@@ -649,7 +651,10 @@ static void event_timer(unsigned long data)
 {
 	csr_dev_t *dv = (csr_dev_t *)data;
 	printk("########%s#######\n",__func__);
-	btusb_defer_kevent(dv, EVENT_INT_RX_HALT);
+	spin_lock(&dv->hcicmd_lock);
+	dv->hcicmd.count++;
+	spin_unlock(&dv->hcicmd_lock);
+	btusb_defer_kevent(dv, EVENT_CTRL_TX_TIMEOUT);
 }
 #endif
 
@@ -999,7 +1004,8 @@ static void usbRxIntrComplete(struct urb *urb)
         }
     }
 
-    if(test_bit(DEVICE_CONNECTED, &(dv->flags)))
+    if(test_bit(DEVICE_CONNECTED, &(dv->flags)) &&
+		!test_bit(EVENT_CTRL_TX_TIMEOUT,&(dv->flags)))
     {
         int16_t err;
 
@@ -1045,6 +1051,10 @@ static void usbRxBulkComplete(struct urb *urb)
     dv = (csr_dev_t *)urb->context;
     DBG_VERBOSE("%s:status=%d,len=%d\n", __func__,
 			urb->status,urb->actual_length);
+    if(urb->status != 0)
+    {
+        printk("Rx BULK complete error, code %d\n", urb->status);
+    }
 
     /* Data is available */
     if((urb->status == 0) && (urb->actual_length > 0))
@@ -1071,14 +1081,8 @@ static void usbRxBulkComplete(struct urb *urb)
         }
     }
 
-    if((urb->status != 0) &&
-       (urb->status != -ENOENT) &&
-       (urb->status != -ECONNRESET) &&
-       (urb->status != -ESHUTDOWN))
-    {
-        printk("Rx BULK complete error, code %d\n", urb->status);
-    }
-    if(test_bit(DEVICE_CONNECTED, &(dv->flags)))
+    if(test_bit(DEVICE_CONNECTED, &(dv->flags)) &&
+	!test_bit(EVENT_CTRL_TX_TIMEOUT,&(dv->flags)))
   	{
 		err = URB_SUBMIT(urb, GFP_ATOMIC);
 		/* Success or disconnect not errors */
@@ -1461,6 +1465,7 @@ void startListen(csr_dev_t *dv)
     printk("Listen loop started, code %i\n", res);
 }
 
+#ifdef CSR_BR_USB_USE_SCO_INTF
 /*************************************************************
  * NAME:
  *      handleIsocInEndpoint
@@ -1533,6 +1538,7 @@ static void handleIsocOutEndpoint(csr_dev_t *dv, int alt,
             dv->minor, dv->isoc_out_interval, dv->isoc_out_size);
     }
 }
+#endif
 /*************************************************************
  * NAME:
  *      handleBulkInEndpoint
@@ -1638,19 +1644,89 @@ int usb_reset_txctrl(struct usb_device *dev, int pipe)
 	return 0;
 }
 
+void usb_resend_txctrl(csr_dev_t *dv)
+{
+    struct urb *txctrl;
+	int err;
+#if 0
+	if(dv->intr_urb != NULL)
+	{
+		printk("%s:Unlink and free Rx INTR\n",__func__);
+		usb_kill_urb(dv->intr_urb);
+	}
+#endif
+	spin_lock(&dv->hcicmd_lock);
+	if(dv->hcicmd.in_use == false)
+	{
+			printk("%s already receive the event\n",__func__);
+			spin_unlock(&dv->hcicmd_lock);
+			return ;
+	}
+	spin_unlock(&dv->hcicmd_lock);
+
+	txctrl = URB_ALLOC(0, GFP_KERNEL);
+    if(txctrl != NULL)
+    {
+		printk("%s:opcode=0x%x,size=%d\n",__func__,
+				dv->hcicmd.opcode,dv->hcicmd.payload_size);
+        /* Setup packet */
+        dv->ctrl_setup.wLength = cpu_to_le16(dv->hcicmd.payload_size);
+
+        usb_fill_control_urb(txctrl,
+                             dv->dev,
+                             usb_sndctrlpipe(dv->dev,
+                                             dv->ctrl_ep),
+                             (unsigned char*)&dv->ctrl_setup,
+                             dv->hcicmd.payload,
+                             dv->hcicmd.payload_size,
+                             usbTxCtrlComplete,
+                             NULL);
+		err = btusb_wait_urb(txctrl,BTUSB_URB_TIMEOUT/2);
+		if(err != 0)
+		{
+			printk("%s:btusb_wait_urb error code %d\n",__func__, err);
+		}
+    }
+    else
+    {
+        printk(PRNPREFIX "%s alloc error, code %d\n", __func__,err);
+    }
+
+}
+
 static void btusb_deferred_kevent(struct work_struct *work)
 {
     int err = -ENOMEM;
 
 	csr_dev_t *dv = container_of(work, csr_dev_t, kevent);
 	printk("#####%s \n",__func__);
-	if (test_bit(EVENT_INT_RX_HALT, &(dv->flags))) {
-		clear_bit(EVENT_INT_RX_HALT, &dv->flags);
-
-		err = usb_reset_txctrl(dv->dev, usb_sndctrlpipe(dv->dev, dv->ctrl_ep));
-		if (err < 0) {
-			printk(" %s: tx ctrl clear halt error %d\n",__func__,err);
+	if (test_bit(EVENT_CTRL_TX_TIMEOUT, &(dv->flags))) {
+		spin_lock(&dv->hcicmd_lock);
+		if(dv->hcicmd.in_use == true)
+		{
+			printk("%s timeout count = %d\n",__func__,dv->hcicmd.count);
+			dv->hcicmd.timer.expires = jiffies + msecs_to_jiffies(1000);
+			add_timer(&dv->hcicmd.timer);
+			spin_unlock(&dv->hcicmd_lock);
+		}
+		else
+		{
+			printk("%s already receive the event\n",__func__);
+			spin_unlock(&dv->hcicmd_lock);
+			clear_bit(EVENT_CTRL_TX_TIMEOUT, &dv->flags);
 			return;
+		}
+		usb_kill_urb(dv->intr_urb);
+		usb_kill_urb(dv->bulk_urb[0]);
+		err = usb_submit_urb(dv->intr_urb, GFP_KERNEL);
+		if (err < 0) {
+			printk("%s: intr rx unhalt submit urb error	%d\n", __func__,err);
+		}
+		clear_bit(EVENT_CTRL_TX_TIMEOUT, &dv->flags);
+		usb_resend_txctrl(dv);
+		err = usb_submit_urb(dv->bulk_urb[0], GFP_KERNEL);
+		if (err < 0) {
+			printk("%s: intr rx unhalt submit urb error	%d\n", __func__,err);
 		}
 	}
 }
@@ -1858,6 +1934,7 @@ int csrUsbProbe(struct usb_interface *intf,
             }
         }
     }
+#ifdef CSR_BR_USB_USE_SCO_INTF
     /* Scan SCO interface for endpoints */
     for (alt = 0; alt < sco_intf->num_altsetting; alt++)
     {
@@ -1913,6 +1990,7 @@ int csrUsbProbe(struct usb_interface *intf,
             }
         }
     }
+#endif
 #ifdef CSR_BR_USB_USE_DFU_INTF
     if(dfu_intf != NULL)
     {
@@ -1951,8 +2029,10 @@ int csrUsbProbe(struct usb_interface *intf,
 
     if (test_bit(BULK_IN_READY, &dv->endpoint_present) &&
        test_bit(BULK_OUT_READY, &dv->endpoint_present) &&
+#ifdef CSR_BR_USB_USE_SCO_INTF
        test_bit(ISOC_OUT_READY, &dv->endpoint_present) &&
        test_bit(ISOC_IN_READY, &dv->endpoint_present) &&
+#endif
        test_bit(INTR_IN_READY, &dv->endpoint_present))
     {
         DBG_PRINT("All required endpoints found, starting loop\n");
@@ -1977,6 +2057,7 @@ int csrUsbProbe(struct usb_interface *intf,
 	init_timer(&dv->hcicmd.timer);
 	dv->hcicmd.timer.data = (unsigned long)dv;
 	dv->hcicmd.timer.function = event_timer;
+	dv->hcicmd.count = 0;
 	spin_lock_init(&dv->hcicmd_lock);
 #endif
     printk("bt_usb%u: device_init_wakeup is done\n",devno);

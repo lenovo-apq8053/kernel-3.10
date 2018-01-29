@@ -104,8 +104,10 @@ extern "C" {
 #define R_THREAD_RUNNING      3
 #define DEVICE_SUSPENDED      4
 
-#define EVENT_INT_RX_HALT     5
-#define EVENT_INT_RX_OVERFLOW 6
+#define EVENT_CTRL_TX_HALT    5
+#define EVENT_CTRL_TX_TIMEOUT    6
+#define EVENT_INT_RX_HALT     7
+#define EVENT_INT_RX_OVERFLOW 8
 
 /* Endpoint availability flags */
 #define BULK_IN_READY         1
@@ -185,6 +187,7 @@ struct hci_cmd {
 	uint16_t                   opcode;
 	unsigned char              payload[4096];
 	uint16_t                   payload_size;
+	uint8_t                    count;
 };
 
 #define NAPLES_HCI_TIMER 1

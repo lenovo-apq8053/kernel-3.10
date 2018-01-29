@@ -399,6 +399,8 @@ static ssize_t bt_usb_read(struct file *file, char __user *buf, size_t size, lof
 					del_timer_sync(&dv->hcicmd.timer);
 					dv->hcicmd.in_use = false;
 					dv->hcicmd.opcode = 0x0;
+					dv->hcicmd.count = 0x0;
+					dv->hcicmd.payload_size = 0x0;
 #ifdef NAPLES_HCI_TIMER_DEBUG
 					dumpData(ptr->msg->buf,ptr->msg->buflen);
 #endif
@@ -599,8 +601,10 @@ static ssize_t bt_usb_write(struct file *file, const char __user *buf, size_t co
 					{
 						dv->hcicmd.timer.expires = jiffies + msecs_to_jiffies(BTUSB_EVENT_TIMEOUT);
 						dv->hcicmd.in_use = true;
+						dv->hcicmd.count = 0x0;
 						dv->hcicmd.opcode = buf[1] + (buf[2] << 8);
 						memcpy(dv->hcicmd.payload,payload,payload_size);
+						dv->hcicmd.payload_size = payload_size;
 						add_timer(&dv->hcicmd.timer);
 #ifdef NAPLES_HCI_TIMER_DEBUG
 						dumpData(payload,payload_size);
