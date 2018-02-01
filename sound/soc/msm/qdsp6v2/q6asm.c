@@ -12,6 +12,8 @@
  * GNU General Public License for more details.
  *
  */
+#define DEBUG 1
+#define VERBOSE_DEBUG 1
 #include <linux/fs.h>
 #include <linux/mutex.h>
 #include <linux/wait.h>
@@ -1446,10 +1448,10 @@ static void q6asm_process_mtmx_get_param_rsp(struct audio_client *ac,
 				    cmdrsp->param_info.param_id);
 		return;
 	}
-	dev_dbg_ratelimited(ac->dev,
-			    "%s: mod_id=%x, param_id=%x\n", __func__,
-			    cmdrsp->param_info.module_id,
-			    cmdrsp->param_info.param_id);
+	//dev_dbg_ratelimited(ac->dev,
+	//		    "%s: mod_id=%x, param_id=%x\n", __func__,
+	//		    cmdrsp->param_info.module_id,
+	//		    cmdrsp->param_info.param_id);
 
 	switch (cmdrsp->param_info.module_id) {
 	case ASM_SESSION_MTMX_STRTR_MODULE_ID_AVSYNC:
