@@ -115,6 +115,7 @@
 
 		audio_mem: audio_region@0 {
 			linux,reserve-contiguous-region;
+                        linux,memory-limit = <0x0>;
 			reg = <0 0 0 0x314000>;
 			label = "audio_mem";
 		};
