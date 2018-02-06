@@ -10,8 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#define DEBUG 1
-#define VERBOSE_DEBUG 1
+
 #include <linux/init.h>
 #include <linux/err.h>
 #include <linux/module.h>
