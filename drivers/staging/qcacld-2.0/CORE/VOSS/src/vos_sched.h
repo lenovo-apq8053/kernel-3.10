@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -322,20 +322,6 @@ struct vos_log_complete {
 	bool is_report_in_progress;
 };
 
-/**
- * struct vos_wdthread_timer_work - Watchdog timer thread structure
- * @callback: Watchdog timer work call back
- * @userdata: Input to the timer call back function
- * @node: wdthread timer work Linklist
- *
- * This structure internally stores wdthread timer work related params
- */
-struct vos_wdthread_timer_work {
-	vos_timer_callback_t callback;
-	void *userdata;
-	struct list_head node;
-};
-
 typedef struct _VosContextType
 {
    /* Messages buffers */
@@ -411,10 +397,6 @@ typedef struct _VosContextType
 
    /* radio index per driver */
    int radio_index;
-   struct vos_wdthread_timer_work wdthread_timer_work;
-   struct list_head wdthread_timer_work_list;
-   struct work_struct wdthread_work;
-   spinlock_t wdthread_work_lock;
 } VosContextType, *pVosContextType;
 
 
@@ -658,7 +640,6 @@ int vos_get_gfp_flags(void);
 void vos_wd_reset_thread_stuck_count(int thread_id);
 bool vos_is_wd_thread(int thread_id);
 int vos_sched_is_mc_thread(int thread_id);
-void vos_thread_stuck_timer_init(pVosWatchdogContext wd_ctx);
 
 #define vos_wait_for_work_thread_completion(func) vos_is_ssr_ready(func)
 

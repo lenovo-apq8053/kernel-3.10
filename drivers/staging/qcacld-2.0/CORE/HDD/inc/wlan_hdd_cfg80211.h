@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -111,9 +111,6 @@
 
 #define MAX_CHANNEL (NUM_2_4GHZ_CHANNELS + NUM_5GHZ_CHANNELS)
 
-#define IS_CHANNEL_VALID(channel) ((channel >= 0 && channel < 15) \
-                     || (channel >= 36 && channel <= 184))
-
 typedef struct {
    u8 element_id;
    u8 len;
@@ -124,28 +121,6 @@ typedef struct {
    u32 age;
    u32 tsf_delta;
 }__attribute__((packed)) qcom_ie_age ;
-#endif
-
-#ifndef NL80211_AUTHTYPE_FILS_SK
-#define NL80211_AUTHTYPE_FILS_SK 5
-#endif
-#ifndef NL80211_AUTHTYPE_FILS_SK_PFS
-#define NL80211_AUTHTYPE_FILS_SK_PFS 6
-#endif
-#ifndef NL80211_AUTHTYPE_FILS_PK
-#define NL80211_AUTHTYPE_FILS_PK 7
-#endif
-#ifndef WLAN_AKM_SUITE_FILS_SHA256
-#define WLAN_AKM_SUITE_FILS_SHA256 0x000FAC0E
-#endif
-#ifndef WLAN_AKM_SUITE_FILS_SHA384
-#define WLAN_AKM_SUITE_FILS_SHA384 0x000FAC0F
-#endif
-#ifndef WLAN_AKM_SUITE_FT_FILS_SHA256
-#define WLAN_AKM_SUITE_FT_FILS_SHA256 0x000FAC10
-#endif
-#ifndef WLAN_AKM_SUITE_FT_FILS_SHA384
-#define WLAN_AKM_SUITE_FT_FILS_SHA384 0x000FAC11
 #endif
 
 /* Vendor id to be used in vendor specific command and events
@@ -241,16 +216,13 @@ enum qca_nl80211_vendor_subcmds {
     QCA_NL80211_VENDOR_SUBCMD_GET_WIFI_INFO = 61,
     /* Start Wifi Logger */
     QCA_NL80211_VENDOR_SUBCMD_WIFI_LOGGER_START = 62,
-
-    /* FW Memory Dump feature is deprecated */
-
+    /* Start Wifi Memory Dump */
+    QCA_NL80211_VENDOR_SUBCMD_WIFI_LOGGER_MEMORY_DUMP = 63,
     QCA_NL80211_VENDOR_SUBCMD_ROAM = 64,
-
-    /*
-     * APIs corresponding to the sub commands 65-68 are deprecated.
-     * These sub commands are reserved and not supposed to be used
-     * for any other purpose
-     */
+    QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_SET_SSID_HOTLIST = 65,
+    QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_RESET_SSID_HOTLIST = 66,
+    QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_HOTLIST_SSID_FOUND = 67,
+    QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_HOTLIST_SSID_LOST = 68,
     QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_PNO_SET_LIST = 69,
     QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_PNO_SET_PASSPOINT_LIST = 70,
     QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_PNO_RESET_PASSPOINT_LIST = 71,
@@ -297,79 +269,6 @@ enum qca_nl80211_vendor_subcmds {
 	QCA_NL80211_VENDOR_SUBCMD_ACS_POLICY = 116,
 	QCA_NL80211_VENDOR_SUBCMD_STA_CONNECT_ROAM_POLICY = 117,
 	QCA_NL80211_VENDOR_SUBCMD_SET_SAP_CONFIG  = 118,
-	QCA_NL80211_VENDOR_SUBCMD_GET_STATION = 121,
-
-	/* subcommand for link layer statistics extension */
-	QCA_NL80211_VENDOR_SUBCMD_LL_STATS_EXT = 127,
-	/* subcommand to get chain rssi value */
-	QCA_NL80211_VENDOR_SUBCMD_GET_CHAIN_RSSI = 138,
-	QCA_NL80211_VENDOR_SUBCMD_CHIP_PWRSAVE_FAILURE = 148,
-	/* subcommand to flush peer tids */
-	QCA_NL80211_VENDOR_SUBCMD_PEER_FLUSH_PENDING  = 162,
-
-#ifdef FEATURE_WLAN_THERMAL_SHUTDOWN
-	/* Thermal Shutdown cmds to protect chip */
-	QCA_NL80211_VENDOR_SUBCMD_THERMAL_CMD = 165,
-	QCA_NL80211_VENDOR_SUBCMD_TEMPERATURE_EVENT = 166,
-	QCA_NL80211_VENDOR_SUBCMD_RESUME_COMP_EVENT = 167,
-#endif
-};
-
-/**
- * enum qca_wlan_802_11_mode - dot11 mode
- * @QCA_WLAN_802_11_MODE_INVALID: Invalid dot11 mode
- * @QCA_WLAN_802_11_MODE_11A: mode A
- * @QCA_WLAN_802_11_MODE_11B: mode B
- * @QCA_WLAN_802_11_MODE_11G: mode G
- * @QCA_WLAN_802_11_MODE_11N: mode N
- * @QCA_WLAN_802_11_MODE_11AC: mode AC
- */
-enum qca_wlan_802_11_mode {
-	QCA_WLAN_802_11_MODE_INVALID,
-	QCA_WLAN_802_11_MODE_11A,
-	QCA_WLAN_802_11_MODE_11B,
-	QCA_WLAN_802_11_MODE_11G,
-	QCA_WLAN_802_11_MODE_11N,
-	QCA_WLAN_802_11_MODE_11AC,
-};
-
-/**
- * enum qca_wlan_auth_type - Authentication key management type
- * @QCA_WLAN_AUTH_TYPE_INVALID: Invalid key management type
- * @QCA_WLAN_AUTH_TYPE_OPEN: Open key
- * @QCA_WLAN_AUTH_TYPE_SHARED: shared key
- * @QCA_WLAN_AUTH_TYPE_WPA: wpa key
- * @QCA_WLAN_AUTH_TYPE_WPA_PSK: wpa psk key
- * @QCA_WLAN_AUTH_TYPE_WPA_NONE: wpa none key
- * @QCA_WLAN_AUTH_TYPE_RSN: rsn key
- * @QCA_WLAN_AUTH_TYPE_RSN_PSK: rsn psk key
- * @QCA_WLAN_AUTH_TYPE_FT: ft key
- * @QCA_WLAN_AUTH_TYPE_FT_PSK: ft psk key
- * @QCA_WLAN_AUTH_TYPE_SHA256: shared 256 key
- * @QCA_WLAN_AUTH_TYPE_SHA256_PSK: shared 256 psk
- * @QCA_WLAN_AUTH_TYPE_WAI: wai key
- * @QCA_WLAN_AUTH_TYPE_WAI_PSK wai psk key
- * @QCA_WLAN_AUTH_TYPE_CCKM_WPA: cckm wpa key
- * @QCA_WLAN_AUTH_TYPE_CCKM_RSN: cckm rsn key
- */
-enum qca_wlan_auth_type {
-	QCA_WLAN_AUTH_TYPE_INVALID,
-	QCA_WLAN_AUTH_TYPE_OPEN,
-	QCA_WLAN_AUTH_TYPE_SHARED,
-	QCA_WLAN_AUTH_TYPE_WPA,
-	QCA_WLAN_AUTH_TYPE_WPA_PSK,
-	QCA_WLAN_AUTH_TYPE_WPA_NONE,
-	QCA_WLAN_AUTH_TYPE_RSN,
-	QCA_WLAN_AUTH_TYPE_RSN_PSK,
-	QCA_WLAN_AUTH_TYPE_FT,
-	QCA_WLAN_AUTH_TYPE_FT_PSK,
-	QCA_WLAN_AUTH_TYPE_SHA256,
-	QCA_WLAN_AUTH_TYPE_SHA256_PSK,
-	QCA_WLAN_AUTH_TYPE_WAI,
-	QCA_WLAN_AUTH_TYPE_WAI_PSK,
-	QCA_WLAN_AUTH_TYPE_CCKM_WPA,
-	QCA_WLAN_AUTH_TYPE_CCKM_RSN,
-	QCA_WLAN_AUTH_TYPE_AUTOSWITCH,
 };
 
 enum qca_nl80211_vendor_subcmds_index {
@@ -408,7 +307,6 @@ enum qca_nl80211_vendor_subcmds_index {
     QCA_NL80211_VENDOR_SUBCMD_LL_RADIO_STATS_INDEX,
     QCA_NL80211_VENDOR_SUBCMD_LL_IFACE_STATS_INDEX,
     QCA_NL80211_VENDOR_SUBCMD_LL_PEER_INFO_STATS_INDEX,
-    QCA_NL80211_VENDOR_SUBCMD_LL_STATS_EXT_INDEX,
 #endif /* WLAN_FEATURE_LINK_LAYER_STATS */
     /* EXT TDLS */
     QCA_NL80211_VENDOR_SUBCMD_TDLS_STATE_CHANGE_INDEX,
@@ -429,18 +327,21 @@ enum qca_nl80211_vendor_subcmds_index {
     QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_PNO_PASSPOINT_NETWORK_FOUND_INDEX,
 #endif /* FEATURE_WLAN_EXTSCAN */
 
-#ifdef FEATURE_WLAN_THERMAL_SHUTDOWN
-    QCA_NL80211_VENDOR_SUBCMD_TEMPERATURE_EVENT_INDEX,
-    QCA_NL80211_VENDOR_SUBCMD_RESUME_COMP_EVENT_INDEX,
+#ifdef FEATURE_WLAN_EXTSCAN
+    QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_SET_SSID_HOTLIST_INDEX,
+    QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_RESET_SSID_HOTLIST_INDEX,
+    QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_HOTLIST_SSID_FOUND_INDEX,
+    QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_HOTLIST_SSID_LOST_INDEX,
 #endif
-
     /* OCB events */
     QCA_NL80211_VENDOR_SUBCMD_DCC_STATS_EVENT_INDEX,
+#ifdef WLAN_FEATURE_MEMDUMP
+    QCA_NL80211_VENDOR_SUBCMD_WIFI_LOGGER_MEMORY_DUMP_INDEX,
+#endif /* WLAN_FEATURE_MEMDUMP */
     QCA_NL80211_VENDOR_SUBCMD_MONITOR_RSSI_INDEX,
 #ifdef WLAN_FEATURE_NAN_DATAPATH
     QCA_NL80211_VENDOR_SUBCMD_NDP_INDEX,
 #endif /* WLAN_FEATURE_NAN_DATAPATH */
-    QCA_NL80211_VENDOR_SUBCMD_PWR_SAVE_FAIL_DETECTED_INDEX,
 };
 
 /* EXT TDLS */
@@ -531,21 +432,6 @@ enum qca_wlan_vendor_attr {
 
     /* Unsigned 32-bit value from enum qca_set_band */
     QCA_WLAN_VENDOR_ATTR_SETBAND_VALUE = 12,
-
-    /* used by QCA_NL80211_VENDOR_SUBCMD_GET_CHAIN_RSSI */
-    QCA_WLAN_VENDOR_ATTR_CHAIN_INDEX = 26,
-    QCA_WLAN_VENDOR_ATTR_CHAIN_RSSI = 27,
-
-    /* Used in QCA_NL80211_VENDOR_SUBCMD_STATS_EXT command
-     * to report frame aggregation statistics to userspace.
-     */
-    QCA_WLAN_VENDOR_ATTR_RX_AGGREGATION_STATS_HOLES_NUM = 34,
-    QCA_WLAN_VENDOR_ATTR_RX_AGGREGATION_STATS_HOLES_INFO = 35,
-
-    /* Used in QCA_NL80211_VENDOR_SUBCMD_GET_CHAIN_RSSI command
-     * to report the corresponding antenna index to the chain rssi value
-     */
-    QCA_WLAN_VENDOR_ATTR_ANTENNA_INFO = 40,
 
     /* keep last */
     QCA_WLAN_VENDOR_ATTR_AFTER_LAST,
@@ -900,6 +786,10 @@ enum qca_wlan_vendor_attr_extscan_results
     /* Unsigned 32bit value; a EXTSCAN Capabilities attribute. */
     QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_CAPABILITIES_MAX_NUM_WHITELISTED_SSID,
 
+    /* EXTSCAN attributes for
+     * QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_HOTLIST_SSID_FOUND sub-command &
+     * QCA_NL80211_VENDOR_SUBCMD_EXTSCAN_HOTLIST_SSID_LOST sub-command
+     */
     /* Use attr QCA_WLAN_VENDOR_ATTR_EXTSCAN_NUM_RESULTS_AVAILABLE
      * to indicate number of results.
      */
@@ -910,14 +800,7 @@ enum qca_wlan_vendor_attr_extscan_results
      */
     QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_BUCKETS_SCANNED,
 
-    /*
-     * Unsigned 32bit value; a EXTSCAN Capabilities attribute to send maximum
-     * number of blacklist bssid's that firmware can support.
-     */
-    QCA_WLAN_VENDOR_ATTR_EXTSCAN_MAX_NUM_BLACKLISTED_BSSID,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0))
-    QCA_WLAN_VENDOR_ATTR_EXTSCAN_PAD,
-#endif
+
     /* keep last */
     QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_AFTER_LAST,
     QCA_WLAN_VENDOR_ATTR_EXTSCAN_RESULTS_MAX =
@@ -1239,18 +1122,6 @@ enum qca_wlan_vendor_attr_ll_stats_results
      */
     QCA_WLAN_VENDOR_ATTR_LL_STATS_RADIO_TX_TIME_PER_LEVEL,
 
-    /* Unsigned 32bit value */
-    QCA_WLAN_VENDOR_ATTR_LL_STATS_IFACE_RTS_SUCC_CNT,
-    /* Unsigned 32bit value */
-    QCA_WLAN_VENDOR_ATTR_LL_STATS_IFACE_RTS_FAIL_CNT,
-    /* Unsigned 32bit value */
-    QCA_WLAN_VENDOR_ATTR_LL_STATS_IFACE_PPDU_SUCC_CNT,
-    /* Unsigned 32bit value */
-    QCA_WLAN_VENDOR_ATTR_LL_STATS_IFACE_PPDU_FAIL_CNT,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0))
-    QCA_WLAN_VENDOR_ATTR_LL_STATS_PAD,
-#endif
-    QCA_WLAN_VENDOR_ATTR_LL_STATS_WMM_AC_PENDING_MSDU = 83,
     /* keep last */
     QCA_WLAN_VENDOR_ATTR_LL_STATS_AFTER_LAST,
     QCA_WLAN_VENDOR_ATTR_LL_STATS_MAX =
@@ -1430,8 +1301,6 @@ enum qca_wlan_vendor_attr_pno_config_params {
 	 */
 	QCA_WLAN_VENDOR_ATTR_EPNO_BAND5GHZ_BONUS = 22,
 
-        /* Unsigned 32-bit value, representing the PNO Request ID */
-        QCA_WLAN_VENDOR_ATTR_PNO_CONFIG_REQUEST_ID = 23,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_PNO_AFTER_LAST,
@@ -1579,54 +1448,6 @@ enum qca_wlan_vendor_attr_nd_offload {
 		QCA_WLAN_VENDOR_ATTR_ND_OFFLOAD_AFTER_LAST - 1,
 };
 
-#ifdef FEATURE_WLAN_THERMAL_SHUTDOWN
-/**
- * enum qca_wlan_vendor_attr_get_temperature_rsp - vendor subcmd to get chip
- *	temperature
- *
- * @QCA_WLAN_VENDOR_ATTR_GET_TEMP_RSP_INVALID: invalid
- * @QCA_WLAN_VENDOR_ATTR_GET_TEMP_RSP_TEMPERATURE: 32 bits temperature
- *
- * enum values are used for NL attributes for data used by
- * QCA_NL80211_VENDOR_SUBCMD_GET_TEMPERATURE sub command.
- */
-enum qca_wlan_vendor_attr_get_temperature_rsp {
-	QCA_WLAN_VENDOR_ATTR_GET_TEMP_RSP_INVALID = 0,
-	QCA_WLAN_VENDOR_ATTR_GET_TEMP_RSP_TEMPERATURE,
-	QCA_WLAN_VENDOR_ATTR_GET_TEMP_RSP_AFTER_LAST,
-	QCA_WLAN_VENDOR_ATTR_GET_TEMP_RSP_MAX =
-		QCA_WLAN_VENDOR_ATTR_GET_TEMP_RSP_AFTER_LAST - 1,
-};
-
-/**
- * enum qca_wlan_vendor_attr_get_thermal_params_rsp - vendor subcmd to get
- *	parameters of thermal shutdown feature
- *
- * @QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_INVALID: invalid
- * @QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_SHUTDOWN_EN: 8 bits flag
- * @QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_SHUTDOWN_AUTO_EN: 8 bits flag
- * @QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_RESUME_THRESH: 16 bits threshold
- * @QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_WARNING_THRESH: 16 bits threshold
- * @QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_SUSPEND_THRESH: 16 bits threshold
- * @QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_SAMPLE_RATE: 16 bits sample rate
- *
- * enum values are used for NL attributes for data used by
- * QCA_NL80211_VENDOR_SUBCMD_GET_THERMAL_PARAMS sub command.
- */
-enum qca_wlan_vendor_attr_get_thermal_params_rsp {
-	QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_INVALID = 0,
-	QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_SHUTDOWN_EN,
-	QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_SHUTDOWN_AUTO_EN,
-	QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_RESUME_THRESH,
-	QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_WARNING_THRESH,
-	QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_SUSPEND_THRESH,
-	QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_SAMPLE_RATE,
-	QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_AFTER_LAST,
-	QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_MAX =
-		QCA_WLAN_VENDOR_ATTR_GET_THM_PARAMS_RSP_AFTER_LAST - 1,
-};
-#endif
-
 /**
  * enum qca_wlan_vendor_features - vendor device/driver features
  * @QCA_WLAN_VENDOR_FEATURE_KEY_MGMT_OFFLOAD: Device supports key
@@ -1638,27 +1459,6 @@ enum qca_wlan_vendor_features {
 	QCA_WLAN_VENDOR_FEATURE_KEY_MGMT_OFFLOAD = 0,
 	/* Additional features need to be added above this */
         NUM_QCA_WLAN_VENDOR_FEATURES
-};
-
-/**
- * enum qca_wlan_vendor_attr_flush_pending - Attributes for
- * flush pending traffic in firmware.
- *
- * @QCA_WLAN_VENDOR_ATTR_PEER_ADDR: Configure peer mac address.
- * @QCA_WLAN_VENDOR_ATTR_AC: Configure access category the pending
- *  packets using. It is u8 value with bit0~3 represent AC_BE, AC_BK,
- *  AC_VI, AC_VO respectively. Set the corresponding bit to 1 to flush
- *  packets with access category.
- */
-enum qca_wlan_vendor_attr_flush_pending{
-	QCA_WLAN_VENDOR_ATTR_FLUSH_PENDING_INVALID = 0,
-	QCA_WLAN_VENDOR_ATTR_PEER_ADDR = 1,
-	QCA_WLAN_VENDOR_ATTR_AC = 2,
-
-	/* keep last */
-	QCA_WLAN_VENDOR_ATTR_FLUSH_PENDING_AFTER_LAST,
-	QCA_WLAN_VENDOR_ATTR_FLUSH_PENDING_MAX =
-	QCA_WLAN_VENDOR_ATTR_FLUSH_PENDING_AFTER_LAST - 1,
 };
 
 /* Feature defines */
@@ -1689,10 +1489,6 @@ enum qca_wlan_vendor_attr_flush_pending{
 #define WIFI_FEATURE_MKEEP_ALIVE        0x100000  /* WiFi mkeep_alive */
 #define WIFI_FEATURE_CONFIG_NDO         0x200000  /* ND offload configure */
 #define WIFI_FEATURE_TX_TRANSMIT_POWER  0x400000  /* Tx transmit power levels */
-#define WIFI_FEATURE_CONTROL_ROAMING    0x800000  /* Enable/Disable roaming */
-#define WIFI_FEATURE_IE_WHITELIST       0x1000000 /* Support Probe IE white listing */
-#define WIFI_FEATURE_SCAN_RAND          0x2000000 /* Support MAC & Probe Sequence Number randomization */
-
 
 /* Add more features here */
 #define WIFI_TDLS_SUPPORT			BIT(0)
@@ -1701,6 +1497,7 @@ enum qca_wlan_vendor_attr_flush_pending{
 
 /**
  * enum wifi_logger_supported_features - values for supported logger features
+ * @WIFI_LOGGER_MEMORY_DUMP_SUPPORTED - Memory dump of FW
  * @WIFI_LOGGER_PER_PACKET_TX_RX_STATUS_SUPPORTED - Per packet statistics
  * @WIFI_LOGGER_CONNECT_EVENT_SUPPORTED - Logging of Connectivity events
  * @WIFI_LOGGER_POWER_EVENT_SUPPORTED - Power of driver
@@ -1708,6 +1505,7 @@ enum qca_wlan_vendor_attr_flush_pending{
  * @WIFI_LOGGER_WATCHDOG_TIMER_SUPPORTED - monitor FW health
  */
 enum wifi_logger_supported_features {
+	WIFI_LOGGER_MEMORY_DUMP_SUPPORTED = (1 << (0)),
 	WIFI_LOGGER_PER_PACKET_TX_RX_STATUS_SUPPORTED = (1 << (1)),
 	WIFI_LOGGER_CONNECT_EVENT_SUPPORTED = (1 << (2)),
 	WIFI_LOGGER_POWER_EVENT_SUPPORTED = (1 << (3)),
@@ -1757,33 +1555,6 @@ enum qca_wlan_vendor_acs_hw_mode {
         QCA_ACS_MODE_IEEE80211AD,
 };
 
-#define CFG_NON_AGG_RETRY_MAX                  (31)
-#define CFG_AGG_RETRY_MAX                      (31)
-#define CFG_MGMT_RETRY_MAX                     (31)
-#define CFG_CTRL_RETRY_MAX                     (31)
-#define CFG_PROPAGATION_DELAY_MAX              (63)
-#define CFG_PROPAGATION_DELAY_BASE             (64)
-#define CFG_AGG_RETRY_MIN                      (5)
-
-/**
- * enum qca_access_policy - access control policy
- *
- * Access control policy is applied on the configured IE
- * (QCA_WLAN_VENDOR_ATTR_CONFIG_ACCESS_POLICY_IE).
- * To be set with QCA_WLAN_VENDOR_ATTR_CONFIG_ACCESS_POLICY.
- *
- * @QCA_ACCESS_POLICY_ACCEPT_UNLESS_LISTED: Deny Wi-Fi Connections which match
- *	with the specific configuration (IE) set, i.e. allow all the
- *	connections which do not match the configuration.
- * @QCA_ACCESS_POLICY_DENY_UNLESS_LISTED: Accept Wi-Fi Connections which match
- *	with the specific configuration (IE) set, i.e. deny all the
- *	connections which do not match the configuration.
- */
-enum qca_access_policy {
-	QCA_ACCESS_POLICY_ACCEPT_UNLESS_LISTED,
-	QCA_ACCESS_POLICY_DENY_UNLESS_LISTED,
-};
-
 /**
  * enum qca_wlan_vendor_config: wifi config attr
  *
@@ -1802,44 +1573,10 @@ enum qca_access_policy {
  * @QCA_WLAN_VENDOR_ATTR_CONFIG_MGMT_RETRY: management frame sw retry threshold
  * @QCA_WLAN_VENDOR_ATTR_CONFIG_CTRL_RETRY: control frame sw retry threshold
  * @QCA_WLAN_VENDOR_ATTR_CONFIG_PROPAGATION_DELAY:
- *			     propagation delay for 2G/5G band(Units in us)
+ *			     propagtion delay for 2G/5G band(Units in ms)
  * @QCA_WLAN_VENDOR_ATTR_CONFIG_TX_FAIL_COUNT: Unsigned 32-bit value to
  * configure the number of unicast TX fail packet count.
  * The peer is disconnected once this threshold is reached.
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_SCAN_DEFAULT_IES: Update the default scan IEs
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_GENERIC_COMMAND:
- *                         Unsigned 32-bit value attribute for generic commands
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_GENERIC_VALUE:
- *                  Unsigned 32-bit data attribute for generic command response
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_GENERIC_DATA:
- *                  Unsigned 32-bit data attribute for generic command response
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_GENERIC_LENGTH:
- *                                     Unsigned 32-bit length attribute for
- *                                     QCA_WLAN_VENDOR_ATTR_CONFIG_GENERIC_DATA
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_GENERIC_FLAGS:
- * Unsigned 32-bit flags attribute for QCA_WLAN_VENDOR_ATTR_CONFIG_GENERIC_DATA
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_ACCESS_POLICY: Vendor IE access policy
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_ACCESS_POLICY_IE_LIST: Vendor IE to be used
- *                                                     with access policy
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_IFINDEX: interface index for vdev specific
- *                                       parameters
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_QPOWER: Unsigned 8bit length attribute to update
- *                                      power save config to turn off/on qpower
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_RX_REORDER_TIMEOUT_VOICE:
- *                  32-bit unsigned value to set reorder timeout for AC_VO
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_RX_REORDER_TIMEOUT_VIDEO:
- *                  32-bit unsigned value to set reorder timeout for AC_VI
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_RX_REORDER_TIMEOUT_BESTEFFORT:
- *                  32-bit unsigned value to set reorder timeout for AC_BE
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_RX_REORDER_TIMEOUT_BACKGROUND:
- *                  32-bit unsigned value to set reorder timeout for AC_BK
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_RX_BLOCKSIZE_PEER_MAC:
- *                  6-byte MAC address to point out the specific peer
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_RX_BLOCKSIZE_WINLIMIT:
- *                  32-bit unsigned value to set window size for specific peer
- * @QCA_WLAN_VENDOR_ATTR_CONFIG_PROPAGATION_ABS_DELAY:
- *                  32-bit unsigned value to configure the propagation absolute
- *                  delay for 2G/5G band (units in us)
  * @QCA_WLAN_VENDOR_ATTR_CONFIG_LAST: last config
  * @QCA_WLAN_VENDOR_ATTR_CONFIG_MAX: max config
  */
@@ -1860,85 +1597,11 @@ enum qca_wlan_vendor_config {
 	QCA_WLAN_VENDOR_ATTR_CONFIG_CTRL_RETRY,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_PROPAGATION_DELAY,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_TX_FAIL_COUNT,
-	/* Attribute used to set scan default IEs to the driver.
-	 *
-	 * These IEs can be used by scan operations that will be initiated by
-	 * the driver/firmware.
-	 *
-	 * For further scan requests coming to the driver, these IEs should be
-	 * merged with the IEs received along with scan request coming to the
-	 * driver. If a particular IE is present in the scan default IEs but not
-	 * present in the scan request, then that IE should be added to the IEs
-	 * sent in the Probe Request frames for that scan request. */
-	QCA_WLAN_VENDOR_ATTR_CONFIG_SCAN_DEFAULT_IES,
-	/* Unsigned 32-bit attribute for generic commands */
-	QCA_WLAN_VENDOR_ATTR_CONFIG_GENERIC_COMMAND,
-	/* Unsigned 32-bit value attribute for generic commands */
-	QCA_WLAN_VENDOR_ATTR_CONFIG_GENERIC_VALUE,
-	/* Unsigned 32-bit data attribute for generic command response */
-	QCA_WLAN_VENDOR_ATTR_CONFIG_GENERIC_DATA,
-	/* Unsigned 32-bit length attribute for
-	 * QCA_WLAN_VENDOR_ATTR_CONFIG_GENERIC_DATA */
-	QCA_WLAN_VENDOR_ATTR_CONFIG_GENERIC_LENGTH,
-	/* Unsigned 32-bit flags attribute for
-	 * QCA_WLAN_VENDOR_ATTR_CONFIG_GENERIC_DATA */
-	QCA_WLAN_VENDOR_ATTR_CONFIG_GENERIC_FLAGS,
-	/* Unsigned 32-bit, defining the access policy.
-	 * See enum qca_access_policy. Used with
-	 * QCA_WLAN_VENDOR_ATTR_CONFIG_ACCESS_POLICY_IE_LIST. */
-	QCA_WLAN_VENDOR_ATTR_CONFIG_ACCESS_POLICY,
-	/* Sets the list of full set of IEs for which a specific access policy
-	 * has to be applied. Used along with
-	 * QCA_WLAN_VENDOR_ATTR_CONFIG_ACCESS_POLICY to control the access.
-	 * Zero length payload can be used to clear this access constraint. */
-	QCA_WLAN_VENDOR_ATTR_CONFIG_ACCESS_POLICY_IE_LIST,
-	/* Unsigned 32-bit, specifies the interface index (netdev) for which the
-	 * corresponding configurations are applied. If the interface index is
-	 * not specified, the configurations are attributed to the respective
-	 * wiphy. */
-	QCA_WLAN_VENDOR_ATTR_CONFIG_IFINDEX,
-	/* Unsigned 8-bit, for setting qpower dynamically */
-	QCA_WLAN_VENDOR_ATTR_CONFIG_QPOWER,
-
-	/* 32-bit unsigned value to trigger antenna diversity features:
-	 * 1-Enable, 0-Disable */
-	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_ENA = 27,
-	/* 32-bit unsigned value to configure specific chain antenna */
-	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_CHAIN = 28,
-	/* 32-bit unsigned value to trigger cycle selftest
-	 * 1-Enable, 0-Disable */
-	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_SELFTEST = 29,
-	/* 32-bit unsigned to configure the cycle time of selftest
-	 * the unit is micro-second */
-	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_SELFTEST_INTVL = 30,
-
-	QCA_WLAN_VENDOR_ATTR_CONFIG_RX_REORDER_TIMEOUT_VOICE = 31,
-	QCA_WLAN_VENDOR_ATTR_CONFIG_RX_REORDER_TIMEOUT_VIDEO = 32,
-	QCA_WLAN_VENDOR_ATTR_CONFIG_RX_REORDER_TIMEOUT_BESTEFFORT = 33,
-	QCA_WLAN_VENDOR_ATTR_CONFIG_RX_REORDER_TIMEOUT_BACKGROUND = 34,
-	QCA_WLAN_VENDOR_ATTR_CONFIG_RX_BLOCKSIZE_PEER_MAC = 35,
-	QCA_WLAN_VENDOR_ATTR_CONFIG_RX_BLOCKSIZE_WINLIMIT = 36,
-	QCA_WLAN_VENDOR_ATTR_CONFIG_SUB20_CHAN_WIDTH = 39,
-	QCA_WLAN_VENDOR_ATTR_CONFIG_PROPAGATION_ABS_DELAY = 40,
-	/* 32-bit unsigned value to set probe period*/
-	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_PROBE_PERIOD = 41,
-	/* 32-bit unsigned value to set stay period*/
-	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_STAY_PERIOD = 42,
-	/* 32-bit unsigned value to set snr diff*/
-	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_SNR_DIFF = 43,
-	/* 32-bit unsigned value to set probe dewll time*/
-	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_PROBE_DWELL_TIME = 44,
-	/* 32-bit unsigned value to set mgmt snr weight*/
-	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_MGMT_SNR_WEIGHT = 45,
-	/* 32-bit unsigned value to set data snr weight*/
-	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_DATA_SNR_WEIGHT = 46,
-	/* 32-bit unsigned value to set ack snr weight*/
-	QCA_WLAN_VENDOR_ATTR_CONFIG_ANT_DIV_ACK_SNR_WEIGHT = 47,
 
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_LAST,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_MAX =
-		QCA_WLAN_VENDOR_ATTR_CONFIG_LAST - 1
+	QCA_WLAN_VENDOR_ATTR_CONFIG_LAST - 1
 };
 
 /**
@@ -2062,39 +1725,6 @@ enum qca_wlan_vendor_attr_rssi_monitoring {
 };
 
 /**
- * qca_chip_power_save_failure_reason: Power save failure reason
- * @QCA_CHIP_POWER_SAVE_FAILURE_REASON_PROTOCOL: Indicates power save failure
- * due to protocol/module.
- * @QCA_CHIP_POWER_SAVE_FAILURE_REASON_HARDWARE: power save failure
- * due to hardware
- */
-enum qca_chip_power_save_failure_reason {
-        QCA_CHIP_POWER_SAVE_FAILURE_REASON_PROTOCOL = 0,
-        QCA_CHIP_POWER_SAVE_FAILURE_REASON_HARDWARE = 1,
-};
-
-/**
- * qca_attr_chip_power_save_failure: attributes to vendor subcmd
- * @QCA_NL80211_VENDOR_SUBCMD_CHIP_PWRSAVE_FAILURE. This carry the requisite
- * information leading to the power save failure.
- * @QCA_ATTR_CHIP_POWER_SAVE_FAILURE_INVALID : invalid
- * @QCA_ATTR_CHIP_POWER_SAVE_FAILURE_REASON : power save failure reason
- * represented by enum qca_chip_power_save_failure_reason
- * @QCA_ATTR_CHIP_POWER_SAVE_FAILURE_LAST : Last
- * @QCA_ATTR_CHIP_POWER_SAVE_FAILURE_MAX : Max value
- */
-enum qca_attr_chip_power_save_failure {
-	QCA_ATTR_CHIP_POWER_SAVE_FAILURE_INVALID = 0,
-
-	QCA_ATTR_CHIP_POWER_SAVE_FAILURE_REASON = 1,
-
-	/* keep last */
-	QCA_ATTR_CHIP_POWER_SAVE_FAILURE_LAST,
-	QCA_ATTR_CHIP_POWER_SAVE_FAILURE_MAX =
-		QCA_ATTR_CHIP_POWER_SAVE_FAILURE_LAST - 1,
-};
-
-/**
  * enum set_reset_packet_filter - set packet filter control commands
  * @QCA_WLAN_SET_PACKET_FILTER: Set Packet Filter
  * @QCA_WLAN_GET_PACKET_FILTER: Get Packet filter
@@ -2178,16 +1808,6 @@ enum qca_wlan_vendor_drv_info {
  * Rx wake packet count due to ipv6 multicast
  * @QCA_WLAN_VENDOR_ATTR_OTHER_RX_MULTICAST_CNT:
  * Rx wake packet count due to non-ipv4 and non-ipv6 packets
- * @QCA_WLAN_VENDOR_ATTR_RSSI_BREACH_CNT:
- * wake rssi breach packet count
- * @QCA_WLAN_VENDOR_ATTR_LOW_RSSI_CNT:
- * wake low rssi packet count
- * @QCA_WLAN_VENDOR_ATTR_GSCAN_CNT:
- * wake gscan packet count
- * @QCA_WLAN_VENDOR_ATTR_PNO_COMPLETE_CNT:
- * wake pno complete packet count
- * @QCA_WLAN_VENDOR_ATTR_PNO_MATCH_CNT:
- * wake pno match packet count
  */
 enum qca_wlan_vendor_attr_wake_stats {
 	QCA_WLAN_VENDOR_ATTR_GET_WAKE_STATS_INVALID = 0,
@@ -2209,11 +1829,6 @@ enum qca_wlan_vendor_attr_wake_stats {
 	QCA_WLAN_VENDOR_ATTR_ICMP4_RX_MULTICAST_CNT,
 	QCA_WLAN_VENDOR_ATTR_ICMP6_RX_MULTICAST_CNT,
 	QCA_WLAN_VENDOR_ATTR_OTHER_RX_MULTICAST_CNT,
-	QCA_WLAN_VENDOR_ATTR_RSSI_BREACH_CNT,
-	QCA_WLAN_VENDOR_ATTR_LOW_RSSI_CNT,
-	QCA_WLAN_VENDOR_ATTR_GSCAN_CNT,
-	QCA_WLAN_VENDOR_ATTR_PNO_COMPLETE_CNT,
-	QCA_WLAN_VENDOR_ATTR_PNO_MATCH_CNT,
 	/* keep last */
 	QCA_WLAN_VENDOR_GET_WAKE_STATS_AFTER_LAST,
 	QCA_WLAN_VENDOR_GET_WAKE_STATS_MAX =
@@ -2289,143 +1904,6 @@ enum qca_wlan_vendor_attr_sap_config {
 		QCA_WLAN_VENDOR_ATTR_SAP_CONFIG_AFTER_LAST - 1,
 };
 
-/**
- * enum qca_wlan_vendor_attr_get_station - Sub commands used by
- * QCA_NL80211_VENDOR_SUBCMD_GET_STATION to get the corresponding
- * station information. The information obtained through these
- * commands signify the current info in connected state and
- * latest cached information during the connected state , if queried
- * when in disconnected state.
- *
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INVALID: Invalid attribute
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO: bss info
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_ASSOC_FAIL_REASON: assoc fail reason
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_REMOTE: remote peer info
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_AFTER_LAST: After last
- */
-enum qca_wlan_vendor_attr_get_station {
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INVALID = 0,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO = 1,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_ASSOC_FAIL_REASON = 2,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_REMOTE = 3,
-
-	/* keep last */
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_AFTER_LAST,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_MAX =
-		QCA_WLAN_VENDOR_ATTR_GET_STATION_AFTER_LAST - 1,
-};
-
-/**
- * enum qca_wlan_vendor_attr_get_station_info - Station Info queried
- * through QCA_NL80211_VENDOR_SUBCMD_GET_STATION.
- *
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_INVALID: Invalid Attribute
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_LINK_STANDARD_NL80211_ATTR:
- *  Get the standard NL attributes Nested with this attribute.
- *  Ex : Query BW , BITRATE32 , NSS , Signal , Noise of the Link -
- *  NL80211_ATTR_SSID / NL80211_ATTR_SURVEY_INFO (Connected Channel) /
- *  NL80211_ATTR_STA_INFO
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_AP_STANDARD_NL80211_ATTR:
- *  Get the standard NL attributes Nested with this attribute.
- *  Ex : Query HT/VHT Capability advertized by the AP.
- *  NL80211_ATTR_VHT_CAPABILITY / NL80211_ATTR_HT_CAPABILITY
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_ROAM_COUNT:
- *  Number of successful Roam attempts before a
- *  disconnect, Unsigned 32 bit value
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_AKM:
- *  Authentication Key Management Type used for the connected session.
- *  Signified by enum qca_wlan_auth_type
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_802_11_MODE: 802.11 Mode of the
- *  connected Session, signified by enum qca_wlan_802_11_mode
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_AP_HS20_INDICATION:
- *  HS20 Indication Element
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_ASSOC_FAIL_REASON:
- *  Status Code Corresponding to the Association Failure.
- *  Unsigned 32 bit value.
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_MAX_PHY_RATE:
- *  max phy rate for remote peer
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_TX_PACKETS:
- *  tx packets for remote peer (interface layer)
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_TX_BYTES:
- *  tx bytes for remote peer (interface layer)
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_RX_PACKETS:
- *  rx packets for remote peer (interface layer)
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_RX_BYTES:
- *  rx bytes for remote peer (interface layer)
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_LAST_TX_RATE:
- *  last tx rate for remote peer (in kbps)
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_LAST_RX_RATE:
- *  last rx rate for remote peer (in kbps)
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_WMM:
- *  wmm for remote peer
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_SUPPORTED_MODE:
- *  supported mode for remote peer
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_AMPDU:
- *  ampdu for remote peer
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_TX_STBC:
- *  tx stbc for remote peer
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_RX_STBC:
- *  rx stbc for remote peer
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_CH_WIDTH:
- *  ch widht for remote peer
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_SGI_ENABLE:
- *  sgi enable for remote peer
- * @QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_AFTER_LAST: After last
- */
-enum qca_wlan_vendor_attr_get_station_info {
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_INVALID = 0,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_LINK_STANDARD_NL80211_ATTR,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_AP_STANDARD_NL80211_ATTR,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_ROAM_COUNT,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_AKM,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_802_11_MODE,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_AP_HS20_INDICATION,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_HT_OPERATION,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_VHT_OPERATION,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_ASSOC_FAIL_REASON,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_MAX_PHY_RATE,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_TX_PACKETS,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_TX_BYTES,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_RX_PACKETS,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_RX_BYTES,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_LAST_TX_RATE,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_LAST_RX_RATE,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_WMM,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_SUPPORTED_MODE,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_AMPDU,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_TX_STBC,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_RX_STBC,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_CH_WIDTH,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_REMOTE_SGI_ENABLE,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0))
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_PAD,
-#endif
-	/* keep last */
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_AFTER_LAST,
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_MAX =
-		QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_AFTER_LAST - 1,
-};
-
-/* define short names for get station info attributes */
-#define LINK_INFO_STANDARD_NL80211_ATTR \
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_LINK_STANDARD_NL80211_ATTR
-#define AP_INFO_STANDARD_NL80211_ATTR \
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_AP_STANDARD_NL80211_ATTR
-#define INFO_ROAM_COUNT \
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_ROAM_COUNT
-#define INFO_AKM \
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_AKM
-#define WLAN802_11_MODE \
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_802_11_MODE
-#define AP_INFO_HS20_INDICATION \
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_AP_HS20_INDICATION
-#define HT_OPERATION \
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_HT_OPERATION
-#define VHT_OPERATION \
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_VHT_OPERATION
-#define INFO_ASSOC_FAIL_REASON \
-	QCA_WLAN_VENDOR_ATTR_GET_STATION_INFO_ASSOC_FAIL_REASON
-
 /** enum qca_vendor_attr_txpower_scale - vendor sub commands index
  * @QCA_WLAN_VENDOR_ATTR_TXPOWER_SCALE_INVALID: invalid value
  * @QCA_WLAN_VENDOR_ATTR_TXPOWER_SCALE: scaling value
@@ -2458,316 +1936,6 @@ enum qca_vendor_attr_txpower_scale_decr_db {
 	QCA_WLAN_VENDOR_ATTR_TXPOWER_SCALE_DECR_DB_MAX =
 		QCA_WLAN_VENDOR_ATTR_TXPOWER_SCALE_DECR_DB_AFTER_LAST - 1
 };
-
-/**
- * enum qca_wlan_vendor_attr_ll_stats_ext - Attributes for MAC layer monitoring
- *    offload which is an extension for LL_STATS.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_CFG_PERIOD: Monitoring period. Unit in ms.
- *    If MAC counters do not exceed the threshold, FW will report monitored
- *    link layer counters periodically as this setting. The first report is
- *    always triggered by this timer.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_CFG_THRESHOLD: It is a percentage (1-99).
- *    For each MAC layer counter, FW holds two copies. One is the current value.
- *    The other is the last report. Once a current counter's increment is larger
- *    than the threshold, FW will indicate that counter to host even if the
- *    monitoring timer does not expire.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_PS_CHG: Peer STA power state change
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TID: TID of MSDU
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_NUM_MSDU: Count of MSDU with the same
- *    failure code.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_STATUS: TX failure code
- *    1: TX packet discarded
- *    2: No ACK
- *    3: Postpone
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_MAC_ADDRESS: peer MAC address
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_PS_STATE: Peer STA current state
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_GLOBAL: Global threshold.
- *    Threshold for all monitored parameters. If per counter dedicated threshold
- *    is not enabled, this threshold will take effect.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_EVENT_MODE: Indicate what triggers this
- *    event, PERORID_TIMEOUT == 1, THRESH_EXCEED == 0.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_IFACE_ID: interface ID
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_ID: peer ID
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_BITMAP: bitmap for TX counters
- *    Bit0: TX counter unit in MSDU
- *    Bit1: TX counter unit in MPDU
- *    Bit2: TX counter unit in PPDU
- *    Bit3: TX counter unit in byte
- *    Bit4: Dropped MSDUs
- *    Bit5: Dropped Bytes
- *    Bit6: MPDU retry counter
- *    Bit7: MPDU failure counter
- *    Bit8: PPDU failure counter
- *    Bit9: MPDU aggregation counter
- *    Bit10: MCS counter for ACKed MPDUs
- *    Bit11: MCS counter for Failed MPDUs
- *    Bit12: TX Delay counter
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_BITMAP: bitmap for RX counters
- *    Bit0: MAC RX counter unit in MPDU
- *    Bit1: MAC RX counter unit in byte
- *    Bit2: PHY RX counter unit in PPDU
- *    Bit3: PHY RX counter unit in byte
- *    Bit4: Disorder counter
- *    Bit5: Retry counter
- *    Bit6: Duplication counter
- *    Bit7: Discard counter
- *    Bit8: MPDU aggregation size counter
- *    Bit9: MCS counter
- *    Bit10: Peer STA power state change (wake to sleep) counter
- *    Bit11: Peer STA power save counter, total time in PS mode
- *    Bit12: Probe request counter
- *    Bit13: Other management frames counter
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_CCA_BSS_BITMAP: bitmap for CCA
- *    Bit0: Idle time
- *    Bit1: TX time
- *    Bit2: time RX in current bss
- *    Bit3: Out of current bss time
- *    Bit4: Wireless medium busy time
- *    Bit5: RX in bad condition time
- *    Bit6: TX in bad condition time
- *    Bit7: time wlan card not availbe
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_SIGNAL_BITMAP: bitmap for signal
- *    Bit0: Per channel SNR counter
- *    Bit1: Per channel noise floor counter
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_NUM: number of peers
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_CHANNEL_NUM: number of channels
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_AC_RX_NUM: number of RX stats
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_CCA_BSS: per channel BSS CCA stats
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER: container for per PEER stats
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_MSDU: Number of total TX MSDUs
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_MPDU: Number of total TX MPDUs
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_PPDU: Number of total TX PPDUs
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_BYTES: bytes of TX data
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_DROP: Number of dropped TX packets
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_DROP_BYTES: Bytes dropped
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_RETRY: waiting time without an ACK
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_NO_ACK: number of MPDU not-ACKed
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_NO_BACK: number of PPDU not-ACKed
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_AGGR_NUM:
- *    aggregation stats buffer length
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_SUCC_MCS_NUM: length of mcs stats
- *    buffer for ACKed MPDUs.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_FAIL_MCS_NUM: length of mcs stats
- *    buffer for failed MPDUs.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_DELAY_ARRAY_SIZE:
- *    length of delay stats array.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_AGGR: TX aggregation stats
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_SUCC_MCS: MCS stats for ACKed MPDUs
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_FAIL_MCS: MCS stats for failed MPDUs
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_DELAY: tx delay stats
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MPDU: MPDUs received
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MPDU_BYTES: bytes received
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_PPDU: PPDU received
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_PPDU_BYTES: PPDU bytes received
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MPDU_LOST: packets lost
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MPDU_RETRY: number of RX packets
- *    flagged as retransmissions
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MPDU_DUP: number of RX packets
- *    flagged as duplicated
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MPDU_DISCARD: number of RX
- *    packets discarded
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_AGGR_NUM: length of RX aggregation
- *    stats buffer.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MCS_NUM: length of RX mcs
- *    stats buffer.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MCS: RX mcs stats buffer
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_AGGR: aggregation stats buffer
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_PS_TIMES: times STAs go to sleep
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_PS_DURATION: STAS' total sleep time
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_PROBE_REQ: number of probe
- *    requests received
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MGMT: number of other mgmt
- *    frames received
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_IDLE_TIME: Percentage of idle time
- *    there is no TX, nor RX, nor interference.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_TIME: percentage of time
- *    transmitting packets.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_TIME: percentage of time
- *    for receiving.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_BUSY: percentage of time
- *    interference detected.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_BAD: percentage of time
- *    receiving packets with errors.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_BAD: percentage of time
- *    TX no-ACK.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_NO_AVAIL: percentage of time
- *    the chip is unable to work in normal conditions.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_IN_BSS_TIME: percentage of time
- *    receiving packets in current BSS.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_OUT_BSS_TIME: percentage of time
- *    receiving packets not in current BSS.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_ANT_NUM: number of antennas
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_SIGNAL:
- *    This is a container for per antenna signal stats.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_ANT_SNR: per antenna SNR value
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_ANT_NF: per antenna NF value
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_IFACE_RSSI_BEACON: RSSI of beacon
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_IFACE_SNR_BEACON: SNR of beacon
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_REPORT_TIME: u64
- *    Absolute timestamp from 1970/1/1, unit in ms. After receiving the
- *    message, user layer APP could call gettimeofday to get another
- *    timestamp and calculate transfer delay for the message.
- * @QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_MEASUREMENT_TIME: u32
- *    Real period for this measurement, unit in us.
- */
-enum qca_wlan_vendor_attr_ll_stats_ext {
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_INVALID = 0,
-
-	/* Attributes for configurations */
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_CFG_PERIOD,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_CFG_THRESHOLD,
-
-	/* Peer STA power state change */
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_PS_CHG,
-
-	/* TX failure event */
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TID,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_NUM_MSDU,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_STATUS,
-
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_PS_STATE,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_MAC_ADDRESS,
-
-	/* MAC counters */
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_GLOBAL,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_EVENT_MODE,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_IFACE_ID,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_ID,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_BITMAP,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_BITMAP,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_CCA_BSS_BITMAP,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_SIGNAL_BITMAP,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_NUM,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_CHANNEL_NUM,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_CCA_BSS,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER,
-
-	/* Sub-attribute for PEER_AC_TX */
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_MSDU,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_MPDU,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_PPDU,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_BYTES,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_DROP,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_DROP_BYTES,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_RETRY,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_NO_ACK,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_NO_BACK,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_AGGR_NUM,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_SUCC_MCS_NUM,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_FAIL_MCS_NUM,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_AGGR,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_SUCC_MCS,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_FAIL_MCS,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_DELAY_ARRAY_SIZE,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_DELAY,
-
-	/* sub-attribute for PEER_AC_RX */
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MPDU,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MPDU_BYTES,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_PPDU,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_PPDU_BYTES,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MPDU_LOST,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MPDU_RETRY,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MPDU_DUP,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MPDU_DISCARD,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_AGGR_NUM,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MCS_NUM,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MCS,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_AGGR,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_PS_TIMES,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_PS_DURATION,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_PROBE_REQ,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_MGMT,
-
-	/* sub-attribute for CCA_BSS */
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_IDLE_TIME,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_TIME,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_TIME,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_BUSY,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_RX_BAD,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_TX_BAD,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_NO_AVAIL,
-
-	/* sub-attribtue for BSS_RX_TIME */
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_IN_BSS_TIME,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_OUT_BSS_TIME,
-
-	/* sub-attribute for PEER_SIGNAL */
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_ANT_NUM,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_PEER_SIGNAL,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_ANT_SNR,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_ANT_NF,
-
-	/* sub-attribute for IFACE_BSS */
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_IFACE_RSSI_BEACON,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_IFACE_SNR_BEACON,
-
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_REPORT_TIME,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_MEASUREMENT_TIME,
-
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_LAST,
-	QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_MAX =
-		QCA_WLAN_VENDOR_ATTR_LL_STATS_EXT_LAST - 1,
-};
-
-#ifdef FEATURE_WLAN_THERMAL_SHUTDOWN
-/**
- * enum wlan_ts_cmds - thermal commands.
- *
- * @WLAN_TS_CMD_GET_PARAMS:
- * Get the configuration parameters for thermal shutdown for user.
- * @WLAN_TS_CMD_GET_TEMP:
- * Get the temperature from FW and send it to user.
- * @WLAN_TS_CMD_SUSPEND:
- * Execute the suspend command issued from user.
- * @WLAN_TS_CMD_RESUME:
- * Execute the resume command issued from user.
- */
-enum wlan_ts_cmds {
-	WLAN_TS_CMD_NONE,
-	WLAN_TS_CMD_GET_PARAMS,
-	WLAN_TS_CMD_GET_TEMP,
-	WLAN_TS_CMD_SUSPEND,
-	WLAN_TS_CMD_RESUME,
-};
-
-/**
- * enum qca_wlan_vendor_attr_thermal_drv_cmd - thermal command value for vendor
- * sub-command QCA_NL80211_VENDOR_SUBCMD_THERMAL_CMD
- * @QCA_WLAN_VENDOR_ATTR_THM_CMD_VALUE:
- * The value of command, driver will implement different operations according
- * to this value.
- */
-enum qca_wlan_vendor_attr_thermal_drv_cmd {
-	QCA_WLAN_VENDOR_ATTR_THM_CMD_INVALID = 0,
-	QCA_WLAN_VENDOR_ATTR_THM_CMD_VALUE,
-	QCA_WLAN_VENDOR_ATTR_THM_CMD_AFTER_LAST,
-	QCA_WLAN_VENDOR_ATTR_THM_CMD_MAX =
-		QCA_WLAN_VENDOR_ATTR_THM_CMD_AFTER_LAST - 1,
-};
-#endif
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0))
-/**
- * enum ieee80211_band - supported frequency bands
- *
- * The bands are assigned this way because the supported
- * bitrates differ in these bands.
- *
- * @IEEE80211_BAND_2GHZ: 2.4GHz ISM band
- * @IEEE80211_BAND_5GHZ: around 5GHz band (4.9-5.7)
- * @IEEE80211_BAND_60GHZ: around 60 GHz band (58.32 - 64.80 GHz)
- * @IEEE80211_NUM_BANDS: number of defined bands
- */
-enum ieee80211_band {
-	IEEE80211_BAND_2GHZ = NL80211_BAND_2GHZ,
-	IEEE80211_BAND_5GHZ = NL80211_BAND_5GHZ,
-	IEEE80211_BAND_60GHZ = NL80211_BAND_60GHZ,
-
-	/* keep last */
-	IEEE80211_NUM_BANDS
-};
-#endif
 
 struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_db( hdd_adapter_t *pAdapter,
                                       tCsrRoamInfo *pRoamInfo
@@ -2840,8 +2008,6 @@ extern void wlan_hdd_cfg80211_update_replayCounterCallback(void *callbackContext
 void* wlan_hdd_change_country_code_cb(void *pAdapter);
 void hdd_select_cbmode(hdd_adapter_t *pAdapter, v_U8_t operationChannel,
                 uint16_t *ch_width);
-void hdd_select_mon_cbmode(hdd_adapter_t *adapter, v_U8_t operation_channel,
-                           uint16_t *ch_width);
 
 v_U8_t* wlan_hdd_cfg80211_get_ie_ptr(const v_U8_t *pIes,
                                      int length,
@@ -2869,8 +2035,8 @@ void wlan_hdd_testmode_rx_event(void *buf, size_t buf_len);
 #endif
 
 void hdd_suspend_wlan(void (*callback)(void *callbackContext, boolean suspended),
-                      void *callbackContext, bool thermal);
-void hdd_resume_wlan(bool thermal);
+                      void *callbackContext);
+void hdd_resume_wlan(void);
 
 #if defined(FEATURE_WLAN_CH_AVOID) || defined(FEATURE_WLAN_FORCE_SAP_SCC)
 int wlan_hdd_send_avoid_freq_event(hdd_context_t *pHddCtx,
@@ -2883,24 +2049,14 @@ void wlan_hdd_cfg80211_extscan_callback(void *ctx,
                                       void *pMsg);
 #endif /* FEATURE_WLAN_EXTSCAN */
 
-void wlan_hdd_cfg80211_chainrssi_callback(void *ctx, void *pmsg);
-
 void hdd_rssi_threshold_breached(void *hddctx,
 				 struct rssi_breach_event *data);
 
 struct cfg80211_bss* wlan_hdd_cfg80211_update_bss_list(
    hdd_adapter_t *pAdapter, tSirMacAddr bssid);
-int __wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
-                                   struct cfg80211_wowlan *wow, bool thermal);
 
 int wlan_hdd_cfg80211_suspend_wlan(struct wiphy *wiphy,
                                    struct cfg80211_wowlan *wow);
-int __wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy, bool thermal);
-int wlan_hdd_cfg80211_resume_wlan(struct wiphy *wiphy);
-
-bool hdd_system_suspend_state_set(hdd_context_t *hdd_ctx, bool state);
-int hdd_thermal_suspend_state(hdd_context_t *hdd_ctx);
-
 void wlan_hdd_cfg80211_acs_ch_select_evt(hdd_adapter_t *adapter);
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
 int wlan_hdd_send_roam_auth_event(hdd_context_t *hdd_ctx_ptr, uint8_t *bssid,
@@ -2968,29 +2124,4 @@ static inline void wlan_hdd_cfg80211_indicate_disconnect(struct net_device *dev,
 				GFP_KERNEL);
 }
 #endif
-
-/**
- * enum wlan_hdd_scan_type_for_randomization - type of scan
- * @WLAN_HDD_HOST_SCAN: refers to scan request from cfg80211_ops "scan"
- * @WLAN_HDD_PNO_SCAN: refers to scan request is from "sched_scan_start"
- *
- * driver uses this enum to identify source of scan
- *
- */
-enum wlan_hdd_scan_type_for_randomization {
-	WLAN_HDD_HOST_SCAN,
-	WLAN_HDD_PNO_SCAN,
-};
-
-int wlan_hdd_try_disconnect(hdd_adapter_t *pAdapter);
-
-/**
- * wlan_hdd_cfg80211_scan_block_cb() - scan block work handler
- * @work: Pointer to work
- *
- * This function is used to do scan block work handler
- *
- * Return: None
- */
-void wlan_hdd_cfg80211_scan_block_cb(struct work_struct *work);
 #endif

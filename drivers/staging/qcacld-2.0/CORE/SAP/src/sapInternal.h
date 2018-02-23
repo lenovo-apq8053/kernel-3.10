@@ -250,10 +250,6 @@ typedef struct sSapContext {
     tSapChannelListInfo SapChnlList;
     uint16_t           vht_channel_width;
     uint16_t           ch_width_orig;
-#ifdef FEATURE_WLAN_MCC_TO_SCC_SWITCH
-    uint16_t           ch_width_24g_orig;
-    uint16_t           ch_width_5g_orig;
-#endif
 
     // session to scan
     tANI_BOOLEAN        isScanSessionOpen;
@@ -278,8 +274,6 @@ typedef struct sSapContext {
     struct sap_acs_cfg *acs_cfg;
 #ifdef FEATURE_WLAN_MCC_TO_SCC_SWITCH
     v_U8_t             cc_switch_mode;
-    bool               band_switch_enable;
-    bool               ap_p2pclient_concur_enable;
 #endif
 
 #if defined(FEATURE_WLAN_STA_AP_MODE_DFS_DISABLE)
@@ -310,9 +304,6 @@ typedef struct sSapContext {
     tSirMacRateSet extended_rate_set;
     vos_event_t sap_session_opened_evt;
     vos_event_t sap_session_closed_evt;
-    eCsrBand	target_band;
-    uint8_t     sub20_channelwidth;
-    uint32_t    backup_channel;
 } *ptSapContext;
 
 
@@ -1104,18 +1095,7 @@ eHalStatus sap_CloseSession(tHalHandle hHal,
                             ptSapContext sapContext,
                             csrRoamSessionCloseCallback callback,
                             v_BOOL_t valid);
-#ifdef FEATURE_WLAN_MCC_TO_SCC_SWITCH
-bool
-sap_channel_switch_validate(
-	ptSapContext sap_context,
-	tHalHandle hal,
-	uint16_t target_channel,
-	eCsrPhyMode sap_phy_mode,
-	uint8_t cc_switch_mode,
-	uint32_t session_id);
-#endif
 #ifdef __cplusplus
 }
 #endif
-uint8_t sap_select_default_oper_chan_ini(tHalHandle hal, uint32_t acs_11a);
 #endif /* #ifndef WLAN_QCT_WLANSAP_INTERNAL_H */

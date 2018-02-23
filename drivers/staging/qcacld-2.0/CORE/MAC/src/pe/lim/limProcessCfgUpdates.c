@@ -37,7 +37,7 @@
 
 #include "aniGlobal.h"
 
-#include "wni_cfg.h"
+#include "wniCfgSta.h"
 #include "sirMacProtDef.h"
 #include "cfgApi.h"
 #include "limTypes.h"

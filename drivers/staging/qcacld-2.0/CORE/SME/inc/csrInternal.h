@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -397,6 +397,7 @@ typedef struct tagScanCmd
     csrScanCompleteCallback callback;
     void                    *pContext;
     eCsrScanReason          reason;
+    eCsrRoamState           lastRoamState[CSR_ROAM_SESSION_MAX];
     tCsrRoamProfile         *pToRoamProfile;
     tANI_U32                roamId;    //this is the ID related to the pToRoamProfile
     union
@@ -548,7 +549,6 @@ typedef struct tagCsrConfig
     tANI_U32 bgScanInterval;
     eCsrCBChoice cbChoice;
     eCsrBand bandCapability;     //indicate hw capability
-    tANI_U8 gStaLocalEDCAEnable;
     eCsrRoamWmmUserModeType WMMSupportMode;
     tANI_BOOLEAN Is11eSupportEnabled;
     tANI_BOOLEAN Is11dSupportEnabled;
@@ -613,6 +613,10 @@ typedef struct tagCsrConfig
     /* In units of milliseconds */
     tANI_U32  idle_time_conc;
 
+    tANI_U8   nNumStaChanCombinedConc;   //number of channels combined for
+                                         //Sta in each split scan operation
+    tANI_U8   nNumP2PChanCombinedConc;   //number of channels combined for
+                                         //P2P in each split scan operation
 #endif
 
     tANI_BOOLEAN IsIdleScanEnabled;
@@ -694,9 +698,6 @@ typedef struct tagCsrConfig
     tANI_U8 isCoalesingInIBSSAllowed;
 #ifdef FEATURE_WLAN_MCC_TO_SCC_SWITCH
     tANI_U8 cc_switch_mode;
-    bool    band_switch_enable;
-    bool    ap_p2pgo_concurrency_enable;
-    bool    ap_p2pclient_concur_enable;
 #endif
     tANI_U8 allowDFSChannelRoam;
 #ifdef WLAN_FEATURE_ROAM_OFFLOAD
@@ -770,6 +771,9 @@ typedef struct tagCsrScanStruct
     tANI_BOOLEAN fScanEnable;
     tANI_BOOLEAN fFullScanIssued;
     vos_timer_t hTimerGetResult;
+#ifdef WLAN_AP_STA_CONCURRENCY
+    vos_timer_t hTimerStaApConcTimer;
+#endif
     vos_timer_t hTimerIdleScan;
     //changes on every scan, it is used as a flag for whether 11d info is found on every scan
     tANI_U8 channelOf11dInfo;
@@ -1059,11 +1063,6 @@ typedef struct tagCsrRoamSession
     bool ch_switch_in_progress;
     bool supported_nss_1x1;
     bool disable_hi_rssi;
-    bool dhcp_done;
-#ifdef WLAN_FEATURE_FILS_SK
-    bool is_fils_connection;
-    uint16_t fils_seq_num;
-#endif
 } tCsrRoamSession;
 
 typedef struct tagCsrRoamStruct
@@ -1078,7 +1077,6 @@ typedef struct tagCsrRoamStruct
     tCsrChannel base40MHzChannels;   //center channels for 40MHz channels
     eCsrRoamState curState[CSR_ROAM_SESSION_MAX];
     eCsrRoamSubState curSubState[CSR_ROAM_SESSION_MAX];
-    eCsrRoamState prev_state[CSR_ROAM_SESSION_MAX];
     //This may or may not have the up-to-date valid channel list
     //It is used to get WNI_CFG_VALID_CHANNEL_LIST and not allocate memory all the time
     tSirMacChanNum validChannelList[WNI_CFG_VALID_CHANNEL_LIST_LEN];
@@ -1122,8 +1120,6 @@ typedef struct tagCsrRoamStruct
     tANI_U16 reassocRespLen;  /* length of reassociation response */
 #endif
     vos_timer_t packetdump_timer;
-    tANI_BOOLEAN pending_roam_disable;
-    vos_spin_lock_t roam_state_lock;
 }tCsrRoamStruct;
 
 

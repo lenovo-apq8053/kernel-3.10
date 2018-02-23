@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -38,7 +38,7 @@
  */
 
 #include "palTypes.h"
-#include "wni_cfg.h"
+#include "wniCfgSta.h"
 #include "aniGlobal.h"
 #include "sirMacProtDef.h"
 
@@ -271,15 +271,13 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
         vos_mem_set(( tANI_U8* )&(psessionEntry->probeRespFrame),
                     sizeof(psessionEntry->probeRespFrame), 0);
 
-        if (vos_is_probe_rsp_offload_enabled()) {
-            /* Can be efficiently updated whenever new IE added
-             * in Probe response in future
-             */
-            if (limUpdateProbeRspTemplateIeBitmapBeacon1(pMac, pBcn1,
-                   psessionEntry) != eSIR_SUCCESS) {
-                       schLog(pMac, LOGE,
-                           FL("Failed to build ProbeRsp template"));
-            }
+        /* Can be efficiently updated whenever new IE added
+         * in Probe response in future
+         */
+        if (limUpdateProbeRspTemplateIeBitmapBeacon1(pMac, pBcn1,
+                psessionEntry) != eSIR_SUCCESS) {
+                    schLog(pMac, LOGE,
+                        FL("Failed to build ProbeRsp template"));
         }
     }
 
@@ -311,13 +309,9 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
 
     if ((psessionEntry->limSystemRole == eLIM_AP_ROLE) &&
        psessionEntry->dfsIncludeChanSwIe == VOS_TRUE) {
-           if (!CHAN_HOP_ALL_BANDS_ENABLE ||
-               psessionEntry->lim_non_ecsa_cap_num == 0)
-                   populate_dot_11_f_ext_chann_switch_ann(
-                       pMac, &pBcn2->ext_chan_switch_ann, psessionEntry);
-           else
-                   PopulateDot11fChanSwitchAnn(pMac, &pBcn2->ChanSwitchAnn,
-                                               psessionEntry);
+           populate_dot_11_f_ext_chann_switch_ann(pMac,
+                           &pBcn2->ext_chan_switch_ann,
+                           psessionEntry);
     }
 
     populate_dot11_supp_operating_classes(pMac, &pBcn2->SuppOperatingClasses,
@@ -341,10 +335,8 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
           * and SAP has instructed to announce channel switch IEs
           * in beacon and probe responses
           */
-          if (!CHAN_HOP_ALL_BANDS_ENABLE)
-                  PopulateDot11fChanSwitchAnn(pMac, &pBcn2->ChanSwitchAnn,
-                                              psessionEntry);
-
+         PopulateDot11fChanSwitchAnn(pMac, &pBcn2->ChanSwitchAnn,
+                                     psessionEntry);
 #ifdef WLAN_FEATURE_11AC
          /* TODO: If in 11AC mode, wider bw channel switch announcement needs
           * to be called
@@ -369,9 +361,6 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     /* populate proprietary IE for MDM device operating in AP-MCC */
     populate_dot11f_avoid_channel_ie(pMac, &pBcn2->QComVendorIE, psessionEntry);
 #endif /* FEATURE_AP_MCC_CH_AVOIDANCE */
-
-    populate_dot11f_sub_20_channel_width_ie(
-        pMac, &pBcn2->QComVendorIE, psessionEntry);
 
     if (psessionEntry->dot11mode != WNI_CFG_DOT11_MODE_11B)
         PopulateDot11fERPInfo( pMac, &pBcn2->ERPInfo, psessionEntry );
@@ -452,11 +441,9 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
     }
 
     if (LIM_IS_AP_ROLE(psessionEntry)) {
-        if (vos_is_probe_rsp_offload_enabled()) {
-            /* Can be efficiently updated whenever new IE added  in Probe response in future */
-            limUpdateProbeRspTemplateIeBitmapBeacon2(pMac,pBcn2,&psessionEntry->DefProbeRspIeBitmap[0],
-                                                     &psessionEntry->probeRespFrame);
-        }
+        /* Can be efficiently updated whenever new IE added  in Probe response in future */
+        limUpdateProbeRspTemplateIeBitmapBeacon2(pMac,pBcn2,&psessionEntry->DefProbeRspIeBitmap[0],
+                                                &psessionEntry->probeRespFrame);
 
         /* update probe response WPS IE instead of beacon WPS IE
         * */
@@ -505,7 +492,7 @@ tSirRetStatus schSetFixedBeaconFields(tpAniSirGlobal pMac,tpPESession psessionEn
         /* merge extcap IE */
         if (extcap_present &&
             psessionEntry->limSystemRole != eLIM_STA_IN_IBSS_ROLE)
-            lim_merge_extcap_struct(&pBcn2->ExtCap, &extracted_extcap, true);
+            lim_merge_extcap_struct(&pBcn2->ExtCap, &extracted_extcap);
 
     }
 
@@ -665,6 +652,7 @@ void limUpdateProbeRspTemplateIeBitmapBeacon2(tpAniSirGlobal pMac,
                      sizeof(beacon2->SuppOperatingClasses));
     }
 
+#ifdef FEATURE_AP_MCC_CH_AVOIDANCE
     if(beacon2->QComVendorIE.present)
     {
         SetProbeRspIeBitmap(DefProbeRspIeBitmap, SIR_MAC_QCOM_VENDOR_EID);
@@ -672,6 +660,7 @@ void limUpdateProbeRspTemplateIeBitmapBeacon2(tpAniSirGlobal pMac,
                      (void *)&beacon2->QComVendorIE,
                      sizeof(beacon2->QComVendorIE));
     }
+#endif /* FEATURE_AP_MCC_CH_AVOIDANCE */
 
     /* ERP information */
     if(beacon2->ERPInfo.present)

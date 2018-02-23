@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -38,7 +38,7 @@
 #include "palTypes.h"
 #include "aniGlobal.h"
 #include "sirCommon.h"
-#include "wni_cfg.h"
+#include "wniCfgSta.h"
 #include "limUtils.h"
 #include "limAssocUtils.h"
 #include "limStaHashApi.h"
@@ -1108,7 +1108,7 @@ __limIbssSearchAndDeletePeer(tpAniSirGlobal pMac,
 					limDelSta(pMac, pStaDs,
 						false /*asynchronous*/,
 						psessionEntry);
-				limDeleteDphHashEntry(pMac,
+					limDeleteDphHashEntry(pMac,
 							pStaDs->staAddr,
 							peerIdx, psessionEntry);
 				limReleasePeerIdx(pMac, peerIdx, psessionEntry);
@@ -1128,8 +1128,7 @@ __limIbssSearchAndDeletePeer(tpAniSirGlobal pMac,
 					pPrevNode = pMac->lim.gLimIbssPeerList;
 				} else
 					pPrevNode->next = pTempNode->next;
-				if (pTempNode->beacon)
-					vos_mem_free(pTempNode->beacon);
+
 				vos_mem_free(pTempNode);
 				pMac->lim.gLimNumIbssPeers--;
 
@@ -1644,8 +1643,6 @@ void limIbssHeartBeatHandle(tpAniSirGlobal pMac,tpPESession psessionEntry)
                 else
                     pPrevNode->next = pTempNode->next;
 
-                if (pTempNode->beacon)
-                    vos_mem_free(pTempNode->beacon);
                 vos_mem_free(pTempNode);
                 pMac->lim.gLimNumIbssPeers--;
 

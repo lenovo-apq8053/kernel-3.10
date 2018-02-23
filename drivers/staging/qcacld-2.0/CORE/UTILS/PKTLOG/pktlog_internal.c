@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2013-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -35,7 +35,6 @@
 #include "pktlog_ac_i.h"
 #include "wma_api.h"
 #include "wlan_logging_sock_svc.h"
-#include "ol_txrx.h"
 
 #define TX_DESC_ID_LOW_MASK	0xffff
 #define TX_DESC_ID_LOW_SHIFT	0
@@ -209,14 +208,6 @@ static void process_ieee_hdr(void *data)
 	}
 }
 
-static inline uint16_t get_desc_pool_size(struct ol_txrx_pdev_t *txrx_pdev)
-{
-	if (txrx_pdev->cfg.is_high_latency)
-		return ol_tx_desc_pool_size_hl(txrx_pdev->ctrl_pdev);
-	else
-		return ol_cfg_target_tx_credit(txrx_pdev->ctrl_pdev);
-}
-
 A_STATUS
 process_tx_info(struct ol_txrx_pdev_t *txrx_pdev,
 		void *data)
@@ -323,10 +314,6 @@ process_tx_info(struct ol_txrx_pdev_t *txrx_pdev,
 		 */
 		txctl_log.priv.frm_hdr = frm_hdr;
 		adf_os_assert(txctl_log.priv.txdesc_ctl);
-		adf_os_assert(pl_hdr.size < sizeof(txctl_log.priv.txdesc_ctl));
-		pl_hdr.size = (pl_hdr.size > sizeof(txctl_log.priv.txdesc_ctl))
-			       ? sizeof(txctl_log.priv.txdesc_ctl) :
-			       pl_hdr.size;
 		adf_os_mem_copy((void *)&txctl_log.priv.txdesc_ctl,
 				((void *)data + sizeof(struct ath_pktlog_hdr)),
 				pl_hdr.size);
@@ -394,19 +381,8 @@ process_tx_info(struct ol_txrx_pdev_t *txrx_pdev,
 					     >> TX_DESC_ID_HIGH_SHIFT);
 				msdu_id += 1;
 			}
-			if (tx_desc_id >= get_desc_pool_size(txrx_pdev)) {
-				adf_os_print("%s: drop due to invalid msdu id = %x\n",
-						__func__, tx_desc_id);
-				return A_ERROR;
-			}
-
-			tx_desc = ol_tx_desc_find_check(txrx_pdev, tx_desc_id);
-			if (!tx_desc) {
-				adf_os_print("%s: ignore invalid desc_id(%u)\n",
-						__func__, tx_desc_id);
-				return A_ERROR;
-			}
-
+			tx_desc = ol_tx_desc_find(txrx_pdev, tx_desc_id);
+			adf_os_assert(tx_desc);
 			netbuf = tx_desc->netbuf;
 			htt_tx_desc = (uint32_t *) tx_desc->htt_tx_desc;
 			adf_os_assert(htt_tx_desc);
@@ -415,7 +391,7 @@ process_tx_info(struct ol_txrx_pdev_t *txrx_pdev,
 
 			if (len < (2 * IEEE80211_ADDR_LEN)) {
 				adf_os_print("TX frame does not have a valid address\n");
-				return A_ERROR;
+				return -1;
 			}
 			/* Adding header information for the TX data frames */
 			vdev_id = (u_int8_t)(*(htt_tx_desc +

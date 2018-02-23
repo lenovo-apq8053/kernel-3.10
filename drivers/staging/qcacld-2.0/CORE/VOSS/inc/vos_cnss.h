@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2015-2016 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -30,27 +30,18 @@
 #include <net/cnss.h>
 #endif
 
-#define DISABLE_KRAIT_IDLE_PS_VAL    1
-
 #if defined(WLAN_OPEN_SOURCE) && !defined(CONFIG_CNSS)
 #include <linux/device.h>
 #include <linux/pm_wakeup.h>
 #include <linux/jiffies.h>
 #include <linux/workqueue.h>
 #include <linux/sched.h>
-#include <linux/pci.h>
 
 enum cnss_bus_width_type {
 	CNSS_BUS_WIDTH_NONE,
 	CNSS_BUS_WIDTH_LOW,
 	CNSS_BUS_WIDTH_MEDIUM,
 	CNSS_BUS_WIDTH_HIGH
-};
-
-enum cnss_cc_src {
-	CNSS_SOURCE_CORE,
-	CNSS_SOURCE_11D,
-	CNSS_SOURCE_USER
 };
 
 static inline void vos_wlan_pci_link_down(void){ return; }
@@ -240,15 +231,6 @@ static inline int vos_unregister_oob_irq_handler(void *pm_oob)
 static inline void vos_dump_stack (struct task_struct *task)
 {
 }
-
-static inline void vos_set_cc_source(enum cnss_cc_src cc_source)
-{
-}
-
-static inline enum cnss_cc_src vos_get_cc_source(void)
-{
-	return CNSS_SOURCE_USER;
-}
 #else /* END WLAN_OPEN_SOURCE and !CONFIG_CNSS */
 static inline void vos_dump_stack (struct task_struct *task)
 {
@@ -341,16 +323,6 @@ static inline int vos_wlan_get_dfs_nol(void *info, u16 info_len)
 static inline void vos_get_boottime_ts(struct timespec *ts)
 {
         cnss_get_boottime(ts);
-}
-
-static inline void vos_set_cc_source(enum cnss_cc_src cc_source)
-{
-	cnss_set_cc_source(cc_source);
-}
-
-static inline enum cnss_cc_src vos_get_cc_source(void)
-{
-	return cnss_get_cc_source();
 }
 
 #ifdef HIF_SDIO
@@ -450,7 +422,7 @@ static inline void vos_release_pm_sem(void) {}
 #endif
 
 #ifdef FEATURE_BUS_BANDWIDTH
-static inline int vos_request_bus_bandwidth(struct device *dev, int bandwidth)
+ static inline int vos_request_bus_bandwidth(struct device *dev, int bandwidth)
 {
 	return cnss_common_request_bus_bandwidth(dev, bandwidth);
 }

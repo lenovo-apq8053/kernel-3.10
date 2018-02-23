@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2018 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -339,50 +339,9 @@ v_VOID_t vos_fwDumpReq(tANI_U32 cmd, tANI_U32 arg1, tANI_U32 arg2,
 
 v_BOOL_t vos_is_packet_log_enabled(void);
 
-v_BOOL_t vos_config_is_no_ack(void);
-
-#ifdef WLAN_FEATURE_TSF_PLUS
-bool vos_is_ptp_rx_opt_enabled(void);
-bool vos_is_ptp_tx_opt_enabled(void);
-#else
-static inline bool vos_is_ptp_rx_opt_enabled(void)
-{
-	return false;
-}
-
-static inline bool vos_is_ptp_tx_opt_enabled(void)
-{
-	return false;
-}
-#endif
-
-#ifdef WLAN_FEATURE_DSRC
-bool vos_is_ocb_tx_per_pkt_stats_enabled(void);
-#else
-static inline bool vos_is_ocb_tx_per_pkt_stats_enabled(void)
-{
-	return false;
-}
-#endif
-
 v_U64_t vos_get_monotonic_boottime(void);
 
-/**
- * vos_get_monotonic_boottime_ns - Get kenel boottime in ns
- *
- * Return: kernel boottime in nano sec
- */
-v_U64_t vos_get_monotonic_boottime_ns(void);
-
-/**
- * vos_get_bootbased_boottime_ns - Get kenel boottime in ns
- * it includes the system suspend time also
- * Return: kernel boottime in nano sec
- */
-
-v_U64_t vos_get_bootbased_boottime_ns(void);
-
-void vos_trigger_recovery(bool);
+void vos_trigger_recovery(void);
 
 #ifdef FEATURE_WLAN_D0WOW
 v_VOID_t vos_pm_control(v_BOOL_t vote);
@@ -409,7 +368,7 @@ void vos_deinit_log_completion(void);
 VOS_STATUS vos_flush_logs(uint32_t is_fatal,
 		uint32_t indicator,
 		uint32_t reason_code,
-		uint32_t dump_vos_trace);
+		bool dump_vos_trace);
 void vos_wlan_flush_host_logs_for_fatal(void);
 void vos_logging_set_fw_flush_complete(void);
 void vos_probe_threads(void);
@@ -417,25 +376,5 @@ void vos_set_fatal_event(bool value);
 void vos_pkt_stats_to_logger_thread(void *pl_hdr, void *pkt_dump, void *data);
 int vos_get_radio_index(void);
 int vos_set_radio_index(int radio_index);
-void vos_svc_fw_shutdown_ind(struct device *dev);
-uint64_t vos_do_div(uint64_t, uint32_t);
-/**
- * vos_do_div64() - Do uint64/64 divsion.
- * @dividend: Dividend value
- * @divisor: Divisor value
- *
- * Return: Quotient
- */
-uint64_t vos_do_div64(uint64_t dividend, uint64_t divisor);
-VOS_STATUS vos_force_fw_dump(void);
-
-bool vos_is_probe_rsp_offload_enabled(void);
-/**
- * vos_is_mon_enable - API to check if moniotr mode is on now.
- *
- * return - false: monitor mode is off
- *          true: monitor mode is on
- */
-bool vos_is_mon_enable(void);
 
 #endif // if !defined __VOS_API_H
