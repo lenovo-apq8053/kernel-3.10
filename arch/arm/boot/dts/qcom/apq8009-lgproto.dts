@@ -95,6 +95,11 @@
   mdss_dsi0: qcom,mdss_dsi@1ac8000 {
                status = "disabled";
   };
+  qcom,msm-thermal {
+               qcom,core-control-mask = <0xa>;
+               qcom,freq-mitigation-value = <1190400>;
+               qcom,freq-mitigation-control-mask = <0x05>;
+  };
 };
 
 &external_image_mem {
