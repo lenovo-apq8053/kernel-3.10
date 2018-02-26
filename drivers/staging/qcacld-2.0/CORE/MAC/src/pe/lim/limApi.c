@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2017 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -38,7 +38,7 @@
  *
  */
 #include "palTypes.h"
-#include "wniCfgSta.h"
+#include "wni_cfg.h"
 #include "wniApi.h"
 #include "sirCommon.h"
 #include "sirDebug.h"
@@ -2392,7 +2392,7 @@ void limRoamOffloadSynchInd(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
      pftSessionEntry->limPrevSmeState = pftSessionEntry->limSmeState;
      pftSessionEntry->limSmeState = eLIM_SME_WT_REASSOC_STATE;
      VOS_TRACE(VOS_MODULE_ID_PE, VOS_TRACE_LEVEL_DEBUG,
-               "LFR3:%s:created session (%p) with id = %d",
+               "LFR3:%s:created session (%pK) with id = %d",
                __func__, pftSessionEntry, pftSessionEntry->peSessionId);
      /* Update the ReAssoc BSSID of the current session */
      sirCopyMacAddr(psessionEntry->limReAssocbssId, pbssDescription->bssId);
@@ -2435,6 +2435,7 @@ void lim_mon_init_session(tpAniSirGlobal mac_ptr,
 		return;
 	}
 	psession_entry->vhtCapability = 1;
+	psession_entry->sub20_channelwidth = mac_ptr->sub20_channelwidth;
 }
 
 /** -----------------------------------------------------------------

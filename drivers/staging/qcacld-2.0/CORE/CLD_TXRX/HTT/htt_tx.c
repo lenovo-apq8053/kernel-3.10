@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2014, 2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011, 2014, 2016-2017 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -734,7 +734,7 @@ htt_tx_desc_display(void *tx_desc)
     htt_tx_desc = (struct htt_tx_msdu_desc_t *) tx_desc;
 
     /* only works for little-endian */
-    adf_os_print("HTT tx desc (@ %p):\n", htt_tx_desc);
+    adf_os_print("HTT tx desc (@ %pK):\n", htt_tx_desc);
     adf_os_print("  msg type = %d\n", htt_tx_desc->msg_type);
     adf_os_print("  pkt subtype = %d\n", htt_tx_desc->pkt_subtype);
     adf_os_print("  pkt type = %d\n", htt_tx_desc->pkt_type);
@@ -879,12 +879,6 @@ int htt_tx_ipa_uc_attach(struct htt_pdev_t *pdev,
                adf_nbuf_free(pdev->ipa_uc_tx_rsc.tx_buf_pool_vaddr_strg[idx]);
            }
        }
-   }
-
-   if (tx_buffer_count_pwr2 < 0) {
-       adf_os_print("%s: Failed to round down Tx buffer count %d",
-                   __func__, tx_buffer_count_pwr2);
-       goto free_tx_comp_base;
    }
 
    pdev->ipa_uc_tx_rsc.alloc_tx_buf_cnt = tx_buffer_count_pwr2;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -110,6 +110,9 @@ ol_tx_queue_vdev_flush(struct ol_txrx_pdev_t *pdev, struct ol_txrx_vdev_t *vdev)
     /* flush bundling queue */
     ol_tx_hl_queue_flush_all(vdev);
 
+    /* flush del_ack queue */
+    ol_tx_hl_del_ack_queue_flush_all(vdev);
+
     /* flush VDEV TX queues */
     for (i = 0; i < OL_TX_VDEV_NUM_QUEUES; i++) {
         txq = &vdev->txqs[i];
@@ -154,7 +157,7 @@ ol_tx_queue_vdev_flush(struct ol_txrx_pdev_t *pdev, struct ol_txrx_vdev_t *vdev)
                 }
             }
             TXRX_PRINT(TXRX_PRINT_LEVEL_ERR,
-                      "%s: Delete Peer %p\n", __func__, peer);
+                      "%s: Delete Peer %pK\n", __func__, peer);
             ol_txrx_peer_unref_delete(peers[i]);
         }
     } while (peer_count >= PEER_ARRAY_COUNT);
@@ -291,9 +294,15 @@ ol_tx_dequeue(
     u_int16_t num_frames;
     int bytes_sum;
     unsigned credit_sum;
+    u_int16_t temp_frms;
+    u_int32_t temp_bytes;
+    bool flush_all = false;
+    struct ol_tx_desc_t *tx_flush_desc;
 
     TXRX_ASSERT2(txq->flag != ol_tx_queue_paused);
     TX_SCHED_DEBUG_PRINT("Enter %s\n", __func__);
+    temp_frms = txq->frms;
+    temp_bytes = txq->bytes;
 
     if (txq->frms < max_frames) {
         max_frames = txq->frms;
@@ -304,6 +313,13 @@ ol_tx_dequeue(
         unsigned frame_credit;
         struct ol_tx_desc_t *tx_desc;
         tx_desc = TAILQ_FIRST(&txq->head);
+        if(!tx_desc) {
+           flush_all = true;
+           TXRX_PRINT(TXRX_PRINT_LEVEL_ERR,
+                      "%s: flush frames: num_frames = %d, max_frames = %d\n",
+                       __func__, num_frames, max_frames);
+           break;
+        }
 
         frame_credit = htt_tx_msdu_credit(tx_desc->netbuf);
         if (credit_sum + frame_credit > *credit) {
@@ -323,8 +339,22 @@ ol_tx_dequeue(
     OL_TX_QUEUE_LOG_DEQUEUE(pdev, txq, num_frames, bytes_sum);
     TX_SCHED_DEBUG_PRINT("Leave %s\n", __func__);
 
-    *bytes = bytes_sum;
-    *credit = credit_sum;
+    if (flush_all && bytes_sum) {
+        *bytes = temp_bytes;
+        *credit = 0;
+        txq->frms = 0;
+        txq->bytes = 0;
+        while (num_frames) {
+            tx_flush_desc = TAILQ_FIRST(head);
+            TAILQ_REMOVE(head, tx_flush_desc, tx_desc_list_elem);
+            ol_tx_desc_frame_free_nonstd(pdev, tx_flush_desc, 0);
+            num_frames--;
+        }
+
+    } else {
+        *bytes = bytes_sum;
+        *credit = credit_sum;
+    }
     return num_frames;
 }
 
@@ -1136,7 +1166,7 @@ ol_txrx_vdev_flush(ol_txrx_vdev_handle vdev)
             adf_nbuf_set_next(vdev->ll_pause.txq.head, NULL);
             adf_nbuf_unmap(vdev->pdev->osdev, vdev->ll_pause.txq.head,
                            ADF_OS_DMA_TO_DEVICE);
-            adf_nbuf_tx_free(vdev->ll_pause.txq.head, 1 /* error */);
+            adf_nbuf_tx_free(vdev->ll_pause.txq.head, ADF_NBUF_PKT_ERROR);
             vdev->ll_pause.txq.head = next;
         }
         vdev->ll_pause.txq.tail = NULL;
@@ -1161,8 +1191,6 @@ void ol_tx_pdev_throttle_phase_timer(void *context)
     int ms = 0;
     throttle_level cur_level;
     throttle_phase cur_phase;
-    extern uint8_t thermal_band;
-    int (*throttle_time_ms)[THROTTLE_PHASE_MAX];
 
     /* update the phase */
     pdev->tx_throttle.current_throttle_phase++;
@@ -1170,11 +1198,6 @@ void ol_tx_pdev_throttle_phase_timer(void *context)
     if (pdev->tx_throttle.current_throttle_phase == THROTTLE_PHASE_MAX) {
         pdev->tx_throttle.current_throttle_phase = THROTTLE_PHASE_OFF;
     }
-
-    if (thermal_band == 2)
-        throttle_time_ms = pdev->tx_throttle.throttle_time_ms_2g;
-    else
-        throttle_time_ms = pdev->tx_throttle.throttle_time_ms_5g;
 
     if (pdev->tx_throttle.current_throttle_phase == THROTTLE_PHASE_OFF) {
         if (ol_tx_pdev_is_target_empty(/*pdev*/)) {
@@ -1185,11 +1208,11 @@ void ol_tx_pdev_throttle_phase_timer(void *context)
 
             cur_level = pdev->tx_throttle.current_throttle_level;
             cur_phase = pdev->tx_throttle.current_throttle_phase;
-            ms = throttle_time_ms[cur_level][cur_phase];
+            ms = pdev->tx_throttle.throttle_time_ms[cur_level][cur_phase];
             if (pdev->tx_throttle.current_throttle_level !=
                 THROTTLE_LEVEL_0) {
                 TXRX_PRINT(TXRX_PRINT_LEVEL_WARN, "start timer %d ms\n", ms);
-                adf_os_timer_start(&pdev->tx_throttle.phase_timer, ms);
+                adf_os_timer_mod(&pdev->tx_throttle.phase_timer, ms);
             }
         }
     }
@@ -1206,10 +1229,10 @@ void ol_tx_pdev_throttle_phase_timer(void *context)
 
         cur_level = pdev->tx_throttle.current_throttle_level;
         cur_phase = pdev->tx_throttle.current_throttle_phase;
-        ms = throttle_time_ms[cur_level][cur_phase];
+        ms = pdev->tx_throttle.throttle_time_ms[cur_level][cur_phase];
         if (pdev->tx_throttle.current_throttle_level != THROTTLE_LEVEL_0) {
             TXRX_PRINT(TXRX_PRINT_LEVEL_WARN, "start timer %d ms\n", ms);
-            adf_os_timer_start(&pdev->tx_throttle.phase_timer, ms);
+            adf_os_timer_mod(&pdev->tx_throttle.phase_timer, ms);
         }
     }
 }
@@ -1225,8 +1248,6 @@ void ol_tx_pdev_throttle_tx_timer(void *context)
 void ol_tx_throttle_set_level(struct ol_txrx_pdev_t *pdev, int level)
 {
     int ms = 0;
-    extern uint8_t thermal_band;
-    int (*throttle_time_ms)[THROTTLE_PHASE_MAX];
 
     if (level >= THROTTLE_LEVEL_MAX) {
         TXRX_PRINT(TXRX_PRINT_LEVEL_WARN,
@@ -1240,15 +1261,6 @@ void ol_tx_throttle_set_level(struct ol_txrx_pdev_t *pdev, int level)
     /* Set the current throttle level */
     pdev->tx_throttle.current_throttle_level = (throttle_level)level;
 
-    if (thermal_band == 2)
-        throttle_time_ms = pdev->tx_throttle.throttle_time_ms_2g;
-    else
-        throttle_time_ms = pdev->tx_throttle.throttle_time_ms_5g;
-
-    VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_INFO,
-              "thermal band %d time %d",
-               thermal_band, throttle_time_ms[level][THROTTLE_PHASE_OFF]);
-
     if (pdev->cfg.is_high_latency) {
 
         adf_os_timer_cancel(&pdev->tx_throttle.phase_timer);
@@ -1256,13 +1268,13 @@ void ol_tx_throttle_set_level(struct ol_txrx_pdev_t *pdev, int level)
         /* Set the phase */
         if (level != THROTTLE_LEVEL_0) {
             pdev->tx_throttle.current_throttle_phase = THROTTLE_PHASE_OFF;
-            ms = throttle_time_ms[level][THROTTLE_PHASE_OFF];
+            ms = pdev->tx_throttle.throttle_time_ms[level][THROTTLE_PHASE_OFF];
             /* pause all */
             ol_txrx_throttle_pause(pdev);
-            adf_os_timer_start(&pdev->tx_throttle.phase_timer, ms);
+            adf_os_timer_mod(&pdev->tx_throttle.phase_timer, ms);
         } else {
             pdev->tx_throttle.current_throttle_phase = THROTTLE_PHASE_ON;
-            ms = throttle_time_ms[level][THROTTLE_PHASE_ON];
+            ms = pdev->tx_throttle.throttle_time_ms[level][THROTTLE_PHASE_ON];
             /* unpause all */
             ol_txrx_throttle_unpause(pdev);
         }
@@ -1271,15 +1283,15 @@ void ol_tx_throttle_set_level(struct ol_txrx_pdev_t *pdev, int level)
         pdev->tx_throttle.current_throttle_phase = THROTTLE_PHASE_OFF;
 
         /* Start with the new time */
-        ms = throttle_time_ms[level][THROTTLE_PHASE_OFF];
+        ms = pdev->tx_throttle.throttle_time_ms[level][THROTTLE_PHASE_OFF];
 
         adf_os_timer_cancel(&pdev->tx_throttle.phase_timer);
-        adf_os_timer_start(&pdev->tx_throttle.phase_timer, ms);
+        adf_os_timer_mod(&pdev->tx_throttle.phase_timer, ms);
     }
 }
 
 void ol_tx_throttle_init_period(struct ol_txrx_pdev_t *pdev, int period,
-    u_int8_t *dutycycle_level_2g, u_int8_t *dutycycle_level_5g)
+    u_int8_t *dutycycle_level)
 {
     int i;
 
@@ -1288,26 +1300,16 @@ void ol_tx_throttle_init_period(struct ol_txrx_pdev_t *pdev, int period,
 
     TXRX_PRINT(TXRX_PRINT_LEVEL_WARN, "level  OFF  ON\n");
     for (i = 0; i < THROTTLE_LEVEL_MAX; i++) {
-        pdev->tx_throttle.throttle_time_ms_2g[i][THROTTLE_PHASE_ON] =
+        pdev->tx_throttle.throttle_time_ms[i][THROTTLE_PHASE_ON] =
             pdev->tx_throttle.throttle_period_ms -
-                ((dutycycle_level_2g[i] * pdev->tx_throttle.throttle_period_ms)
+                ((dutycycle_level[i] * pdev->tx_throttle.throttle_period_ms)
                  /100);
-	pdev->tx_throttle.throttle_time_ms_5g[i][THROTTLE_PHASE_ON] =
+        pdev->tx_throttle.throttle_time_ms[i][THROTTLE_PHASE_OFF] =
             pdev->tx_throttle.throttle_period_ms -
-                ((dutycycle_level_5g[i] * pdev->tx_throttle.throttle_period_ms)
-                 /100);
-        pdev->tx_throttle.throttle_time_ms_2g[i][THROTTLE_PHASE_OFF] =
-            pdev->tx_throttle.throttle_period_ms -
-            pdev->tx_throttle.throttle_time_ms_2g[i][THROTTLE_PHASE_ON];
-	pdev->tx_throttle.throttle_time_ms_5g[i][THROTTLE_PHASE_OFF] =
-            pdev->tx_throttle.throttle_period_ms -
-            pdev->tx_throttle.throttle_time_ms_5g[i][THROTTLE_PHASE_ON];
-        VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_INFO,
-                  "%d  2g %d %d  5g %d %d\n", i,
-                  pdev->tx_throttle.throttle_time_ms_2g[i][THROTTLE_PHASE_OFF],
-                  pdev->tx_throttle.throttle_time_ms_2g[i][THROTTLE_PHASE_ON],
-                  pdev->tx_throttle.throttle_time_ms_5g[i][THROTTLE_PHASE_OFF],
-                  pdev->tx_throttle.throttle_time_ms_5g[i][THROTTLE_PHASE_ON]);
+            pdev->tx_throttle.throttle_time_ms[i][THROTTLE_PHASE_ON];
+        TXRX_PRINT(TXRX_PRINT_LEVEL_WARN, "%d      %d    %d\n", i,
+                   pdev->tx_throttle.throttle_time_ms[i][THROTTLE_PHASE_OFF],
+                   pdev->tx_throttle.throttle_time_ms[i][THROTTLE_PHASE_ON]);
     }
 }
 
@@ -1327,8 +1329,7 @@ void ol_tx_throttle_init(struct ol_txrx_pdev_t *pdev)
         dutycycle_level[i] = ol_cfg_throttle_duty_cycle_level(pdev->ctrl_pdev,
                                                               i);
 
-    ol_tx_throttle_init_period(pdev, throttle_period,
-                               &dutycycle_level[0], &dutycycle_level[0]);
+    ol_tx_throttle_init_period(pdev, throttle_period, &dutycycle_level[0]);
 
     adf_os_timer_init(
             pdev->osdev,
@@ -1381,7 +1382,7 @@ ol_tx_queue_log_entry_type_info(
             struct ol_tx_log_queue_state_var_sz_t *record;
 
             align_pad =
-                (*align - ((((u_int32_t) type) + 1))) & (*align - 1);
+               (*align - (uint32_t)(((unsigned long) type) + 1)) & (*align - 1);
             record = (struct ol_tx_log_queue_state_var_sz_t *)
                 (type + 1 + align_pad);
             *size += record->num_cats_active *
@@ -1686,6 +1687,9 @@ ol_tx_queue_log_display(struct ol_txrx_pdev_t *pdev)
      * don't bother.
      */
     VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
+        "Current target credit: %d",
+        adf_os_atomic_read(&pdev->target_tx_credit));
+    VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
         "Tx queue log:");
     VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
         "      : Frames  Bytes  TID  PEER");
@@ -1853,7 +1857,7 @@ ol_tx_queue_display(struct ol_tx_frms_queue_t *txq, int indent)
 
     state = (txq->flag == ol_tx_queue_active) ? "active" : "paused";
     VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_INFO_LOW,
-        "%*stxq %p (%s): %d frms, %d bytes\n",
+        "%*stxq %pK (%s): %d frms, %d bytes\n",
         indent, " ", txq, state, txq->frms, txq->bytes);
 }
 
@@ -1863,7 +1867,7 @@ ol_tx_queues_display(struct ol_txrx_pdev_t *pdev)
     struct ol_txrx_vdev_t *vdev;
 
     VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_INFO_LOW,
-        "pdev %p tx queues:\n", pdev);
+        "pdev %pK tx queues:\n", pdev);
     TAILQ_FOREACH(vdev, &pdev->vdev_list, vdev_list_elem) {
         struct ol_txrx_peer_t *peer;
         int i;
@@ -1872,7 +1876,7 @@ ol_tx_queues_display(struct ol_txrx_pdev_t *pdev)
                 continue;
             }
             VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_INFO_LOW,
-                "  vdev %d (%p), txq %d\n", vdev->vdev_id, vdev, i);
+                "  vdev %d (%pK), txq %d\n", vdev->vdev_id, vdev, i);
             ol_tx_queue_display(&vdev->txqs[i], 4);
         }
         TAILQ_FOREACH(peer, &vdev->peer_list, peer_list_elem) {
@@ -1881,7 +1885,7 @@ ol_tx_queues_display(struct ol_txrx_pdev_t *pdev)
                     continue;
                 }
                 VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_INFO_LOW,
-                    "    peer %d (%p), txq %d\n",
+                    "    peer %d (%pK), txq %d\n",
                     peer->peer_ids[0], vdev, i);
                 ol_tx_queue_display(&peer->txqs[i], 6);
             }
