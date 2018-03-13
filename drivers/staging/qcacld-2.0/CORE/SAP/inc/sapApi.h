@@ -73,6 +73,8 @@ when           who                what, where, why
 #include "vos_packet.h"
 #include "vos_types.h"
 
+#include "wlan_defs.h"
+
 #include "p2p_Api.h"
 #include "sme_Api.h"
 /*----------------------------------------------------------------------------
@@ -101,7 +103,14 @@ when           who                what, where, why
 #define       MAX_TEXT_SIZE                32
 
 #define       MAX_CHANNEL_LIST_LEN         256
-#define       VOS_MAX_NO_OF_SAP_MODE       2 // max # of SAP
+/*
+ * max # of SAP
+ */
+#ifdef WLAN_4SAP_CONCURRENCY
+#define       VOS_MAX_NO_OF_SAP_MODE       4
+#else
+#define       VOS_MAX_NO_OF_SAP_MODE       2
+#endif
 #define       SAP_MAX_NUM_SESSION          5
 #define       SAP_MAX_OBSS_STA_CNT         1 // max # of OBSS STA
 
@@ -257,6 +266,7 @@ typedef struct sap_StationAssocIndication_s {
     eCsrEncryptionType negotiatedUCEncryptionType;
     eCsrEncryptionType negotiatedMCEncryptionType;
     tANI_BOOLEAN fAuthRequired;
+    uint8_t      ecsa_capable;
 } tSap_StationAssocIndication;
 
 typedef struct sap_StationAssocReassocCompleteEvent_s {
@@ -277,6 +287,18 @@ typedef struct sap_StationAssocReassocCompleteEvent_s {
     tANI_U8*     assocRespPtr;
     tANI_U8      timingMeasCap;
     tSirSmeChanInfo chan_info;
+    uint8_t      ecsa_capable;
+    bool                 ampdu;
+    bool                 sgi_enable;
+    bool                 tx_stbc;
+    bool                 rx_stbc;
+    tSirMacHTChannelWidth ch_width;
+    enum sir_sme_phy_mode mode;
+    uint8_t              max_supp_idx;
+    uint8_t              max_ext_idx;
+    uint8_t              max_mcs_idx;
+    uint8_t              rx_mcs_map;
+    uint8_t              tx_mcs_map;
 } tSap_StationAssocReassocCompleteEvent;
 
 typedef struct sap_StationDisassocCompleteEvent_s {
@@ -492,6 +514,24 @@ enum vendor_ie_access_policy {
 	ACCESS_POLICY_DONOT_RESPOND_IF_IE_IS_PRESENT,
 };
 
+/*
+ * enum sub20_chan_switch_mode- sub20 channel
+ * switch mode
+ * @SUB20_NONE: unsupport sub20 channel width
+ * @SUB20_STATIC: support sub20 channel width,
+ * but unsupport sub20 channel width switch
+ * @SUB20_DYN: support sub20 channel width,
+ * sub20 channel width switch auto
+ * @SUB20_MANUAL: support sub20 channel width,
+ * sub20 channel width switch manual
+ */
+enum sub20_chan_switch_mode {
+	SUB20_NONE,
+	SUB20_STATIC,
+	SUB20_DYN,
+	SUB20_MANUAL
+};
+
 typedef struct sap_Config {
     tSap_SSIDInfo_t SSIDinfo;
     eCsrPhyMode     SapHw_mode; /* Wireless Mode */
@@ -507,6 +547,10 @@ typedef struct sap_Config {
     uint8_t         sec_ch;
     uint16_t         vht_channel_width;
     uint16_t         ch_width_orig;
+#ifdef FEATURE_WLAN_MCC_TO_SCC_SWITCH
+    uint16_t         ch_width_24g_orig;
+    uint16_t         ch_width_5g_orig;
+#endif
     v_U8_t          max_num_sta;     /* maximum number of STAs in station table */
     v_U8_t          dtim_period;     /* dtim interval */
     v_U8_t          num_accept_mac;
@@ -532,6 +576,7 @@ typedef struct sap_Config {
     v_U32_t         ht_op_mode_fixed;
     tVOS_CON_MODE   persona; /*Tells us which persona it is GO or AP for now*/
     v_U8_t          disableDFSChSwitch;
+    v_U8_t          enable_radar_war;
     eCsrBand        scanBandPreference;
     v_BOOL_t        enOverLapCh;
     v_U16_t         acsBandSwitchThreshold;
@@ -543,6 +588,8 @@ typedef struct sap_Config {
 #endif
 #ifdef FEATURE_WLAN_MCC_TO_SCC_SWITCH
     v_U8_t          cc_switch_mode;
+    bool            band_switch_enable;
+    bool            ap_p2pclient_concur_enable;
 #endif
 
     v_U16_t    probeRespIEsBufferLen;
@@ -565,6 +612,15 @@ typedef struct sap_Config {
     uint8_t ampdu_size;
     tSirMacRateSet  supported_rates;
     tSirMacRateSet  extended_rates;
+    eCsrBand   target_band;
+    uint16_t  sub20_channelwidth;
+    /* beacon count before channel switch */
+    uint8_t          sap_chanswitch_beacon_cnt;
+    uint8_t          sap_chanswitch_mode;
+    bool             dfs_beacon_tx_enhanced;
+    uint16_t         reduced_beacon_interval;
+    enum sub20_chan_switch_mode  sub20_switch_mode;
+    uint8_t backup_channel;
 } tsap_Config_t;
 
 #ifdef FEATURE_WLAN_AP_AP_ACS_OPTIMIZE
@@ -674,7 +730,15 @@ typedef struct sSapDfsInfo
      * channel switch is disabled.
      */
     v_U8_t              disable_dfs_ch_switch;
+    v_U8_t              sap_enable_radar_war;
     uint16_t            tx_leakage_threshold;
+    uint8_t             new_sub20_channelwidth;
+    /* beacon count before channel switch */
+    uint8_t            sap_ch_switch_beacon_cnt;
+    uint8_t            sap_ch_switch_mode;
+    bool               dfs_beacon_tx_enhanced;
+    uint16_t           reduced_beacon_interval;
+    enum sub20_chan_switch_mode  sub20_switch_mode;
 } tSapDfsInfo;
 
 typedef struct tagSapCtxList
@@ -2428,8 +2492,31 @@ VOS_STATUS wlansap_set_tx_leakage_threshold(tHalHandle hal,
 VOS_STATUS wlansap_get_chan_width(void *pvosctx,
 			uint32_t *pchanwidth);
 
-eHalStatus sapRoamSessionCloseCallback(void *pContext);
+VOS_STATUS wlansap_set_invalid_session(v_PVOID_t pctx);
 
+#ifdef FEATURE_WLAN_SUB_20_MHZ
+VOS_STATUS
+WLANSAP_set_sub20_channelwidth_with_csa(
+	void *vos_ctx_ptr, uint32_t chan_width);
+VOS_STATUS
+WLANSAP_get_sub20_channelwidth(void *vos_ctx_ptr, uint32_t *chan_width);
+
+#else
+static inline VOS_STATUS
+WLANSAP_set_sub20_channelwidth_with_csa(
+	void *vos_ctx_ptr, uint32_t chan_width)
+{
+	return VOS_STATUS_SUCCESS;
+}
+
+static inline VOS_STATUS
+WLANSAP_get_sub20_channelwidth(void *vos_ctx_ptr, uint32_t *chan_width)
+{
+	*chan_width = 0;
+	return VOS_STATUS_SUCCESS;
+}
+#endif
+eHalStatus sapRoamSessionCloseCallback(void *pContext);
 #ifdef __cplusplus
  }
 #endif

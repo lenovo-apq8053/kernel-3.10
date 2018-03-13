@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2016 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -41,12 +41,6 @@
 
 #ifndef _ANIGLOBAL_H
 #define _ANIGLOBAL_H
-
-// Take care to avoid redefinition of this type, if it is
-// already defined in "halWmmApi.h"
-#if !defined(_HALMAC_WMM_API_H)
-typedef struct sAniSirGlobal *tpAniSirGlobal;
-#endif
 
 #include "halTypes.h"
 #include "sirCommon.h"
@@ -195,6 +189,19 @@ enum log_event_indicator {
 };
 
 /**
+ * enum log_dump_trace_mask - Mask to indicate what traces to log
+ * @DUMP_NO_TRACE: Do not dump any logs
+ * @DUMP_VOS_TRACE: Dump vos trace logs
+ * @DUMP_PACKET_TRACE: Dump packet trace
+ *
+ */
+enum log_dump_trace_mask {
+	DUMP_NO_TRACE      = 0x0,
+	DUMP_VOS_TRACE     = 0x1,
+	DUMP_PACKET_TRACE  = 0x2
+};
+
+/**
  * enum log_event_host_reason_code - Reason code for bug report
  * @WLAN_LOG_REASON_CODE_UNUSED: Unused
  * @WLAN_LOG_REASON_ROAM_FAIL: Driver initiated roam has failed
@@ -217,6 +224,7 @@ enum log_event_indicator {
  * @WLAN_LOG_REASON_SME_OUT_OF_CMD_BUFL sme out of cmd buffer
  * @WLAN_LOG_REASON_NO_SCAN_RESULTS: no scan results to report from HDD
  * This enum contains the different reason codes for bug report
+ * @WLAN_LOG_REASON_SCAN_NOT_ALLOWED: scan not allowed due to connection states
  */
 enum log_event_host_reason_code {
 	WLAN_LOG_REASON_CODE_UNUSED,
@@ -237,6 +245,7 @@ enum log_event_host_reason_code {
 	WLAN_LOG_REASON_SME_OUT_OF_CMD_BUF,
 	WLAN_LOG_REASON_NO_SCAN_RESULTS,
 	WLAN_LOG_REASON_STALE_SESSION_FOUND,
+	WLAN_LOG_REASON_SCAN_NOT_ALLOWED,
 };
 
 
@@ -528,6 +537,7 @@ typedef struct sAniSirLim
     tLimScanChnInfo scanChnInfo;
 
     struct lim_scan_channel_status scan_channel_status;
+
     //////////////////////////////////////     SCAN/LEARN RELATED START ///////////////////////////////////////////
     tSirMacAddr         gSelfMacAddr;   //added for BT-AMP Support
 
@@ -1125,10 +1135,19 @@ typedef struct sMacOpenParameters
 #ifdef WLAN_FEATURE_NAN
     bool is_nan_enabled;
 #endif
+#ifdef WLAN_FEATURE_TSF_PLUS
+    bool is_ptp_enabled;
+#endif
     uint16_t  max_mgmt_tx_fail_count;
     bool force_target_assert_enabled;
     uint16_t pkt_bundle_timer_value;
     uint16_t pkt_bundle_size;
+#ifdef QCA_SUPPORT_TXRX_DRIVER_TCP_DEL_ACK
+    uint8_t  del_ack_enable;
+    uint16_t del_ack_timer_value;
+    uint16_t del_ack_pkt_count;
+#endif
+    bool bpf_packet_filter_enable;
 
     struct ol_tx_sched_wrr_ac_specs_t ac_specs[OL_TX_NUM_WMM_AC];
 } tMacOpenParameters;
@@ -1271,6 +1290,13 @@ typedef struct sAniSirGlobal
     bool snr_monitor_enabled;
     /* channel information callback */
     void (*chan_info_cb)(struct scan_chan_info *chan_info);
+    uint8_t  sub20_config_info;
+    uint8_t  sub20_channelwidth;
+    uint8_t  sub20_dynamic_channelwidth;
+    uint8_t  sta_sub20_current_channelwidth;
+    bool     sta_change_cc_via_beacon;
+    bool max_power_cmd_pending;
+    uint32_t sta_auth_retries_for_code17;
 } tAniSirGlobal;
 
 typedef enum
